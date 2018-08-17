@@ -45,13 +45,13 @@ $ todo [PROJECT [SECTION]]
    - When executed with no arguments, Todo will display all existing projects, sections, and tasks:
 
 <p align="center">
-  <img src="images/todo_all.png">
+  <img src="images/todo_all.png" | width=400>
 </p>
 
    - However, when passed a project's or section's name, the output is adjusted to only show that specific project or section:
 
 <p align="center">
-  <img src="images/todo_specific.png">
+  <img src="images/todo_specific.png" | width=400>
 </p>
 
 #### Options
