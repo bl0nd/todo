@@ -51,7 +51,7 @@ $ todo [PROJECT [SECTION]]
    - However, when passed a project's or section's name, the output is adjusted to only show that specific project or section:
 
 <p align="center">
-  <img src="images/todo_specific.png" | width=400>
+  <img src="images/todo_section.png" | width=400>
 </p>
 
 #### Options
