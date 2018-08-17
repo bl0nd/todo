@@ -15,7 +15,7 @@ Aside from some different colors, I wanted to keep the overall design essentiall
 So thank you Budlabs for not only teaching me everything I now know about i3, but also for inspiring me to make something as functional and useful as a TODO list!
 
 ## Setup
-### TODO Repository
+### Todo Repository
 Prior to usage, you must first initialize the Todo directory as a proper Todo repository:
 
 ```sh
@@ -27,13 +27,13 @@ This will create a *.todo* file which will store all data relevant to any projec
 ### Alias
 As an optional step, it is recommended that you create an alias to the script within *.bashrc*, *.bash_aliases*, or your respective shell configuration file. For example, if I installed the script to */opt/todo*, I could add the following line:
 
-```diff
-+ alias todo='python3 /opt/todo/todo.py'
+```sh
+alias todo='python3 /opt/todo/todo.py'
 ```
 
 ## Usage
 Todo has 4 main modes:
-#### Normal
+### Normal
 
 View or modify existing projects and sections.
 
@@ -41,7 +41,7 @@ View or modify existing projects and sections.
 $ todo [PROJECT [SECTION]]
 ```
 
-##### Display
+#### Display
    - When executed with no arguments, Todo will display all existing projects, sections, and tasks:
 
 <p align="center">
@@ -54,7 +54,7 @@ $ todo [PROJECT [SECTION]]
   <img src="images/todo_specific.png">
 </p>
 
-##### Options
+#### Options
 1. **Creation**
 2. **Deletion**
 3. **Archive**
