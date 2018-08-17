@@ -54,7 +54,7 @@ class ArgumentParser(argparse.ArgumentParser):
 usage: python todo.py [--help] [<mode>] [<label> <args>]
 
 Modes:
-   normal      [PROJECT] [SECTION]           View or modify existing projects
+   normal      [PROJECT [SECTION]]           View or modify existing projects
    creation    create PROJECT                Create a new project
    deletion    delete PROJECT                Delete a project
    archive     archive [PROJECT] [SECTION]   Archive completed tasks
