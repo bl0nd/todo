@@ -33,8 +33,8 @@ alias todo='python3 /opt/todo/todo.py'
 
 ## Usage
 Todo has 4 main modes:
-### Normal
 
+### Normal
 View or modify existing projects and sections.
 
 ```sh
@@ -42,19 +42,71 @@ $ todo [PROJECT [SECTION]]
 ```
 
 #### Display
-   - When executed with no arguments, Todo will display all existing projects, sections, and tasks:
+When executed with no arguments, Todo will display all existing projects, sections, and tasks:
 
 <p align="center">
   <img src="images/todo_all.png" | width=400>
 </p>
 
-   - However, when passed a project's or section's name, the output is adjusted to only show that specific project or section:
+When passed a project's or section's name, the output is adjusted to only show that specific project or section:
 
 <p align="center">
   <img src="images/todo_section.png" | width=400>
 </p>
 
 #### Options
-1. **Creation**
-2. **Deletion**
-3. **Archive**
+You can add tasks:
+
+```sh
+$ todo [PROJECT [SECTION]] -a "Task 1"
+```
+- To add a section task, simply specify the section name within the command and the task will automatically be added to the section if it exists.
+
+You can delete tasks:
+
+```sh
+$ todo [PROJECT] -d TASK
+```
+  - As of this release, deleting tasks requires inputting the task's position, not it's normal label. 
+
+You can check and uncheck tasks:
+
+```sh
+$ todo [PROJECT] -c "Task 1"
+$ todo [PROJECT] -u "Task 1"
+```
+
+You can add or delete sections:
+
+```sh
+$ todo [PROJECT] -sa "Section 1"
+$ todo [PROJECT] -sd "Section 1"
+```
+
+### Creation
+Create projects.
+
+```sh
+$ todo create "Project1"
+```
+- As of this release, project names may only contain alphanumerics and no spaces.
+
+Currently, only 3 colors are in rotation for projects (red, green, blue). And though that may change at a future date, let's be honest, if you're working on more than 3 projects then you're kind of spreading yourself out thin!
+
+
+### Deletion
+Delete projects.
+
+```sh
+$ todo delete "Project1"
+```
+
+
+### Archive
+Delete completed tasks.
+
+```sh
+$ todo archive [PROJECT [SECTION]] 
+```
+
+When executed with no arguments, Todo will archive all completed tasks in all projects. This can, of course, be adjusted by project or section depending on the arguments passed.
