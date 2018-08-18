@@ -10,12 +10,46 @@
 NOTES:
     [ ] List colors
 
-            for i in range(0, curses.COLORS):
-                curses.init_pair(i+1, i, -1)  # -1 is transparent
-            for i in range(0, 255):
-                win.addstr(str(i), curses.color_pair(i))
-            win.addstr(' ' * width)
-            win.addstr(' ' * (width-65))
+            def test(stdscr):
+                curses.start_color()
+                curses.use_default_colors()
+                begin_x = 1
+                begin_y = 2
+                height = curses.LINES
+                width = curses.COLS
+                win = newwin(height, width, begin_y, begin_x)
+
+                for i in range(0, curses.COLORS):
+                    curses.init_pair(i+1, i, -1)  # -1 is transparent
+                for i in range(0, 255):
+                    win.addstr(str(i), curses.color_pair(i))
+
+                curses.init_pair(1, 171, 141)  # !, ""
+                curses.init_pair(2, 219, 141)  # r,g,b,v
+                curses.init_pair(3, 254, 141)  # Project
+                curses.init_pair(4, 254, 97)   # Task
+                win.addstr(' ' * width)
+                win.addstr(' ' * (width-65))
+
+                win.addstr(' !!!', curses.color_pair(1))
+                win.addstr(' v', curses.color_pair(2))
+                win.addstr(' "', curses.color_pair(1))
+                win.addstr('O', curses.color_pair(3))
+                win.addstr('"', curses.color_pair(1))
+                win.addstr(' ' * (width-75), curses.color_pair(1))
+                win.addstr(' ' * 65)
+                win.addstr('bbbbb', curses.color_pair(4))
+                win.addstr(' ' * (width-70), curses.color_pair(4))
+                win.addstr(' ' * (width-53))
+                win.addstr(' ' * (width-70), curses.color_pair(4))
+                win.addstr('hi')
+                win.addstr(' ' * (width-70), curses.color_pair(4))
+                win.addstr(' ' * 65)
+                win.addstr(' ' * (width-70), curses.color_pair(4))
+                win.addstr(' ' * 65)
+                win.addstr(' ' * (width-70), curses.color_pair(4))
+
+                win.getch()
 """
 import os
 import sys
@@ -588,9 +622,9 @@ class Menu(object):
         # Colors
         self.init_colors()
         self.colors = {"r": (1, 2, 3, 4, 5, 6, 7, 8),
-                  "g": (9, 10, 11, 12, 13, 14, 15, 16),
-                  "b": (17, 18, 19, 20, 21, 22, 23, 24),
-                  "v": (25, 26, 27, 28, 29, 30, 31, 32)}
+                       "g": (9, 10, 11, 12, 13, 14, 15, 16),
+                       "b": (17, 18, 19, 20, 21, 22, 23, 24),
+                       "v": (25, 26, 27, 28, 29, 30, 31, 32)}
 
 
         # Prefixes
@@ -600,9 +634,6 @@ class Menu(object):
         self.hash  = '     # '
         self.check = '     ✓ '
         self.blank = '{}\n'.format(' ' * 56)
-
-        # Drawing necessities
-        self.section_tasks = []
 
     def init_colors(self):
         """Initialize custom curses color pairs.
@@ -636,8 +667,7 @@ class Menu(object):
         curses.init_pair(5, 253, 131)
         curses.init_pair(6, 203, 131)
         curses.init_pair(7, 210, 131)
-        # curses.init_pair(8, 46, 131)
-        curses.init_pair(8, 131, 131)
+        curses.init_pair(8, 46, 131)
 
         # Green
         curses.init_pair(9, 76, 71)
@@ -647,7 +677,7 @@ class Menu(object):
         curses.init_pair(13, 253, 65)
         curses.init_pair(14, 76, 65)
         curses.init_pair(15, 210, 65)
-        curses.init_pair(16, 65, 65)
+        curses.init_pair(16, 46, 65)
 
         # Blue
         curses.init_pair(17, 75, 69)
@@ -657,7 +687,7 @@ class Menu(object):
         curses.init_pair(21, 253, 67)
         curses.init_pair(22, 75, 67)
         curses.init_pair(23, 210, 67)
-        curses.init_pair(24, 67, 67)
+        curses.init_pair(24, 46, 67)
 
         # Violet
         curses.init_pair(25, 171, 141)
@@ -667,7 +697,7 @@ class Menu(object):
         curses.init_pair(29, 253, 97)
         curses.init_pair(30, 171, 97)
         curses.init_pair(31, 210, 97)
-        curses.init_pair(32, 97, 97)
+        curses.init_pair(32, 46, 97)
 
     def draw_banner(self, stdscr, clrs, proj_color, proj_name, end_banner):
         """Draw the TODO project's banner.
@@ -894,67 +924,22 @@ class Menu(object):
                    Main
 [+++++++++++++++++++++++++++++++++++++++++++++]
 """
-def init(args):
+def init(args, todo_file):
+    """Check for .todo config file."""
     if args and args[0] == 'init':
-            if not Path('.todo').exists():
-                Path('.todo').write_text('{}')
+            if not Path(todo_file).exists():
+                Path(todo_file).write_text('{}')
                 sys.exit(0)
             else:
                 sys.exit('Error: Already a todo respository: .todo')
-    elif not Path('.todo').exists():
+    elif not Path(todo_file).exists():
         sys.exit('Error: Not a todo repository: .todo.')
-
-def test(stdscr):
-    curses.start_color()
-    curses.use_default_colors()
-    begin_x = 1
-    begin_y = 2
-    height = curses.LINES
-    width = curses.COLS
-    win = newwin(height, width, begin_y, begin_x)
-
-    for i in range(0, curses.COLORS):
-        curses.init_pair(i+1, i, -1)  # -1 is transparent
-    for i in range(0, 255):
-        win.addstr(str(i), curses.color_pair(i))
-
-    curses.init_pair(1, 171, 141)  # !, ""
-    curses.init_pair(2, 219, 141)  # r,g,b,v
-    curses.init_pair(3, 254, 141)  # Project
-    curses.init_pair(4, 254, 97)   # Task
-    win.addstr(' ' * width)
-    win.addstr(' ' * (width-65))
-
-    win.addstr(' !!!', curses.color_pair(1))
-    win.addstr(' v', curses.color_pair(2))
-    win.addstr(' "', curses.color_pair(1))
-    win.addstr('O', curses.color_pair(3))
-    win.addstr('"', curses.color_pair(1))
-    win.addstr(' ' * (width-75), curses.color_pair(1))
-    win.addstr(' ' * 65)
-    win.addstr('bbbbb', curses.color_pair(4))
-    win.addstr(' ' * (width-70), curses.color_pair(4))
-    win.addstr(' ' * (width-53))
-    win.addstr(' ' * (width-70), curses.color_pair(4))
-    win.addstr('hi')
-    win.addstr(' ' * (width-70), curses.color_pair(4))
-    win.addstr(' ' * 65)
-    win.addstr(' ' * (width-70), curses.color_pair(4))
-    win.addstr(' ' * 65)
-    win.addstr(' ' * (width-70), curses.color_pair(4))
-
-
-    win.getch()
-
 
 def main(args=sys.argv[1:], todo_file=None):
     """Main program, used when run as a script."""
-    # wrapper(test)
-    # sys.exit()
-    init(args)  # todo configuration file checks
+    init(args, todo_file)  # todo config file checks
     menu = wrapper(Menu)
     parser = create_parser(menu, args, todo_file)
-    # print(parser)
     todo = Todo(menu, parser, todo_file)
 
     if parser.section:
