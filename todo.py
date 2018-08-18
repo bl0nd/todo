@@ -240,7 +240,8 @@ class Todo(object):
 
         if len(sys.argv) == 1:
             self.show()
-        elif args.project or args.section:
+        # elif args.project or args.section:
+        elif not args.create and not args.delete and not args.archive:
             self.proj_sections, self.proj_tasks = self.find_project()
 
     # >>> General functions
@@ -587,8 +588,10 @@ class Menu(object):
         # Colors
         self.init_colors()
         self.colors = {"r": (1, 2, 3, 4, 5, 6, 7, 8),
-                       "g": (9, 10, 11, 12, 13, 14, 15, 16),
-                       "b": (17, 18, 19, 20, 21, 22, 23, 24)}
+                  "g": (9, 10, 11, 12, 13, 14, 15, 16),
+                  "b": (17, 18, 19, 20, 21, 22, 23, 24),
+                  "v": (25, 26, 27, 28, 29, 30, 31, 32)}
+
 
         # Prefixes
         self.excl  = ' !!! '
@@ -633,7 +636,8 @@ class Menu(object):
         curses.init_pair(5, 253, 131)
         curses.init_pair(6, 203, 131)
         curses.init_pair(7, 210, 131)
-        curses.init_pair(8, 46, 131)
+        # curses.init_pair(8, 46, 131)
+        curses.init_pair(8, 131, 131)
 
         # Green
         curses.init_pair(9, 76, 71)
@@ -643,7 +647,7 @@ class Menu(object):
         curses.init_pair(13, 253, 65)
         curses.init_pair(14, 76, 65)
         curses.init_pair(15, 210, 65)
-        curses.init_pair(16, 46, 65)
+        curses.init_pair(16, 65, 65)
 
         # Blue
         curses.init_pair(17, 75, 69)
@@ -653,7 +657,17 @@ class Menu(object):
         curses.init_pair(21, 253, 67)
         curses.init_pair(22, 75, 67)
         curses.init_pair(23, 210, 67)
-        curses.init_pair(24, 46, 67)
+        curses.init_pair(24, 67, 67)
+
+        # Violet
+        curses.init_pair(25, 171, 141)
+        curses.init_pair(26, 219, 141)
+        curses.init_pair(27, 253, 141)
+        curses.init_pair(28, -1, 97)
+        curses.init_pair(29, 253, 97)
+        curses.init_pair(30, 171, 97)
+        curses.init_pair(31, 210, 97)
+        curses.init_pair(32, 97, 97)
 
     def draw_banner(self, stdscr, clrs, proj_color, proj_name, end_banner):
         """Draw the TODO project's banner.
@@ -778,7 +792,7 @@ class Menu(object):
         # Colors
         for i, prj in enumerate(projects):
             if prj == project:
-                proj_color = list(self.colors.keys())[i % 3]
+                proj_color = list(self.colors.keys())[i % len(self.colors)]
         clrs = self.colors.get(proj_color)
 
         # Banner
@@ -839,7 +853,7 @@ class Menu(object):
             proj_name = iter_projects[i][0]
             section_tasks = {str(num) for sect in proj_sections for num in sect.get('tasks')}
             check_list = projects.get(proj).get('check')
-            proj_color = list(self.colors.keys())[i % 3]
+            proj_color = list(self.colors.keys())[i % len(self.colors)]
             clrs = self.colors.get(proj_color)
 
             # Banner
@@ -890,8 +904,53 @@ def init(args):
     elif not Path('.todo').exists():
         sys.exit('Error: Not a todo repository: .todo.')
 
+def test(stdscr):
+    curses.start_color()
+    curses.use_default_colors()
+    begin_x = 1
+    begin_y = 2
+    height = curses.LINES
+    width = curses.COLS
+    win = newwin(height, width, begin_y, begin_x)
+
+    for i in range(0, curses.COLORS):
+        curses.init_pair(i+1, i, -1)  # -1 is transparent
+    for i in range(0, 255):
+        win.addstr(str(i), curses.color_pair(i))
+
+    curses.init_pair(1, 171, 141)  # !, ""
+    curses.init_pair(2, 219, 141)  # r,g,b,v
+    curses.init_pair(3, 254, 141)  # Project
+    curses.init_pair(4, 254, 97)   # Task
+    win.addstr(' ' * width)
+    win.addstr(' ' * (width-65))
+
+    win.addstr(' !!!', curses.color_pair(1))
+    win.addstr(' v', curses.color_pair(2))
+    win.addstr(' "', curses.color_pair(1))
+    win.addstr('O', curses.color_pair(3))
+    win.addstr('"', curses.color_pair(1))
+    win.addstr(' ' * (width-75), curses.color_pair(1))
+    win.addstr(' ' * 65)
+    win.addstr('bbbbb', curses.color_pair(4))
+    win.addstr(' ' * (width-70), curses.color_pair(4))
+    win.addstr(' ' * (width-53))
+    win.addstr(' ' * (width-70), curses.color_pair(4))
+    win.addstr('hi')
+    win.addstr(' ' * (width-70), curses.color_pair(4))
+    win.addstr(' ' * 65)
+    win.addstr(' ' * (width-70), curses.color_pair(4))
+    win.addstr(' ' * 65)
+    win.addstr(' ' * (width-70), curses.color_pair(4))
+
+
+    win.getch()
+
+
 def main(args=sys.argv[1:], todo_file=None):
     """Main program, used when run as a script."""
+    # wrapper(test)
+    # sys.exit()
     init(args)  # todo configuration file checks
     menu = wrapper(Menu)
     parser = create_parser(menu, args, todo_file)
