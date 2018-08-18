@@ -2,7 +2,7 @@
 Todo is a simple and intuitive manager for TODO lists, allowing you to organize your life, or maybe just programming projects, from the terminal in a way that feels natural and looks stylish!
 
 <p align="center">
-  <img src="images/logo.png" | width=800>
+  <img src="images/logo.png" | width=900>
 </p>
 
 
@@ -44,13 +44,13 @@ $ todo [PROJECT [SECTION]]
 When executed with no arguments, Todo will display all existing projects, sections, and tasks:
 
 <p align="center">
-  <img src="images/todo_all.png" | width=400>
+  <img src="images/todo_all.png" | width=600>
 </p>
 
 When passed a project's or section's name, the output is adjusted to only show that specific project or section:
 
 <p align="center">
-  <img src="images/todo_section.png" | width=400>
+  <img src="images/todo_section.png" | width=600>
 </p>
 
 #### Options
