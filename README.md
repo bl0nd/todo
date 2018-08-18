@@ -1,6 +1,11 @@
 # Todo
 Todo is a simple and intuitive manager for TODO lists, allowing you to organize your life, or maybe just programming projects, from the terminal in a way that feels natural and looks stylish!
 
+<p align="center">
+  <img src="images/logo.png" | width=800>
+</p>
+
+
 ## Disclaimer
 Before moving on, it wouldn't be fair of me to continue without mentioning and crediting the inspiration behind the project. Upon watching a completely unrelated video for better window switching in i3wm by the fantastic [Budrich](https://www.youtube.com/channel/UCi8XrDg1bK_MJ0goOnbpTMQ) (who, by the way, is a must-watch for anyone learning i3), I instantly noticed a snazzy TODO list off to the side.
 
@@ -80,7 +85,7 @@ $ todo create "Project1"
 ```
 - As of this release, project names may only contain alphanumerics and no spaces.
 
-Currently, only 3 colors are in rotation for projects (red, green, blue). And though that may change at a future date, let's be honest, if you're working on more than 3 projects then you're kind of spreading yourself out thin!
+Currently, only 4 colors are in rotation for projects (red, green, blue, violet), though that may change at a future date.
 
 
 ### Deletion
