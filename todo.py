@@ -580,6 +580,7 @@ class Todo(object):
         label = self.args.check
         check_list = self.data[self.project]['check']
         task_list = list(self.proj_tasks.values())
+
         if label in task_list:
             for task_num, task in self.proj_tasks.items():
                 if label == task:
@@ -596,6 +597,7 @@ class Todo(object):
         label = self.args.uncheck
         check_list = self.data[self.project]['check']
         task_list = list(self.proj_tasks.values())
+
         if label in task_list:
             for task_num, task in self.proj_tasks.items():
                 if label == task:
@@ -798,8 +800,8 @@ class Menu(object):
         Args:
             stdscr: (Window) Represents the entire screen.
             task_num: (int) The current task's index.
-            check_list: (list) Contains task indices that are marked as checked.
             tname: (String) Name of task.
+            check_list: (list) Contains task indices that are marked as checked.
             clrs: (tuple) 8 sequential numbers that corresponds to the proper
                 curses color pair.
             section: (boolean) Indicates whether the current task is a regular
@@ -905,27 +907,25 @@ class Menu(object):
                     wrapper(self.draw_sections, check_list, clrs, proj_tasks, sect)
 
             # end lines
-            for i in range(2):
-                self.win.addstr(self.blank, curses.color_pair(clrs[3]))
+            self.win.addstr(self.blank * 2, curses.color_pair(clrs[3]))
         elif project:
             # sections and section tasks
             for sect in proj_sections:
                 wrapper(self.draw_sections, check_list, clrs, proj_tasks, sect)
-
-            # tasks
             if proj_sections:
                 self.win.addstr(self.blank, curses.color_pair(clrs[3]))
+
+            # tasks
             for task_num, tname in proj_tasks.items():
                 if task_num not in section_tasks:
                     wrapper(self.draw_tasks, int(task_num), tname, check_list, clrs, section=False)
 
             # end lines
-            if set(proj_tasks.keys()) - section_tasks:
-                body_end = 3
-            else:
-                body_end = 1
-            for i in range(body_end):
-                self.win.addstr(self.blank, curses.color_pair(clrs[3]))
+            #   If there are regular tasks, we need to add 3 blank lines,
+            #   otherwise just add 1 since draw_sections() adds 2 already (one
+            #   between sections and one right before tasks).
+            body_end = 3 if set(proj_tasks.keys()) - section_tasks else 1
+            self.win.addstr(self.blank * body_end, curses.color_pair(clrs[3]))
 
         # Block
         self.win.getch()
@@ -943,6 +943,8 @@ class Menu(object):
         Returns:
             None
         """
+        # The reason we have to use enumerate(projects) and thus iter_projects
+        # during assignment is so we can get the correct proj_color with i.
         for i, proj in enumerate(projects):
             proj_sections = iter_projects[i][1]['sections']
             proj_tasks = iter_projects[i][1]['tasks']
@@ -960,25 +962,22 @@ class Menu(object):
             self.win.addstr(self.blank * 2, curses.color_pair(clrs[3]))
 
             # Body
+            #   section
             for sect in proj_sections:
-                # section
                 wrapper(self.draw_sections, check_list, clrs, proj_tasks, sect)
 
-            # tasks
+            #   tasks
             if proj_sections:
                 self.win.addstr(self.blank, curses.color_pair(clrs[3]))
             for task_num, tname in proj_tasks.items():
                 if task_num not in section_tasks:
                     wrapper(self.draw_tasks, int(task_num), tname, check_list, clrs, section=False)
 
-            # end
-            if set(proj_tasks.keys()) - section_tasks:
-                body_end = 3
-            else:
-                body_end = 1
-            for i in range(body_end):
-                self.win.addstr(self.blank, curses.color_pair(clrs[3]))
+            #   end lines
+            body_end = 3 if set(proj_tasks.keys()) - section_tasks else 1
+            self.win.addstr(self.blank * body_end, curses.color_pair(clrs[3]))
 
+            # Project spacing
             self.win.addstr(' ' * self.width)
             self.win.addstr(' ' * self.width)
 
@@ -1008,9 +1007,7 @@ def main(todo_file):
 
     menu = wrapper(Menu)
     parser = create_parser(menu, todo_file)
-
     todo = Todo(menu, parser, todo_file)
-
 
     if parser.create:
         todo.create()
