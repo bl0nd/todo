@@ -696,12 +696,10 @@ class Menu(object):
 
 
         # Prefixes
-        self.excl  = ' !!! '
-        self.color = '{} '
-        self.quote = '"'
-        self.hash  = '     # '
-        self.check = '     ✓ '
-        self.blank = '{}\n'.format(' ' * 56)
+        self.hash   = '     # '
+        self.check  = '     ✓ '
+        self.utask  = '     □ '
+        self.blank  = '{}\n'.format(' ' * 56)
 
     def init_colors(self):
         """Initialize custom curses color pairs.
@@ -775,7 +773,7 @@ class Menu(object):
 
         Args:
             stdscr: (Window) Represents the entire screen.
-            clrs:   (tuple) 8 sequential numbers that corresponds to the proper
+            clrs: (tuple) 8 sequential numbers that corresponds to the proper
                 curses color pair.
             proj_color: (String) Color of project (e.g., r, g, b).
             proj_name: (String) Name of project.
@@ -785,17 +783,14 @@ class Menu(object):
             None
         """
         end_banner = '"{}\n'.format(' ' * (56 - len(proj_name) - 9))
-        self.win.addstr(self.excl, curses.color_pair(clrs[0]))
-        self.win.addstr(self.color.format(proj_color), curses.A_BOLD | curses.color_pair(clrs[1]))
-        self.win.addstr(self.quote, curses.color_pair(clrs[0]))
+        self.win.addstr(' !!! ', curses.color_pair(clrs[0]))
+        self.win.addstr(f'{proj_color} ', curses.A_BOLD | curses.color_pair(clrs[1]))
+        self.win.addstr('"', curses.color_pair(clrs[0]))
         self.win.addstr(proj_name, curses.A_BOLD | curses.color_pair(clrs[2]))
         self.win.addstr(end_banner, curses.color_pair(clrs[0]))
 
     def draw_tasks(self, stdscr, task_num, tname, check_list, clrs, section=False):
         """Draw regular and section tasks.
-
-        The only difference in drawing regular and section tasks is that section
-            tasks are indented 2 more spaces than regular ones.
 
         Args:
             stdscr: (Window) Represents the entire screen.
@@ -807,28 +802,25 @@ class Menu(object):
             section: (boolean) Indicates whether the current task is a regular
                 or section task.
         """
-        if section:
-            prefix = '  '
-            suffix = '{}\n'.format(' ' * (56 - len(tname) - 9))
-            length = 42
-        else:
-            prefix = ''
-            suffix = '{}\n'.format(' ' * (56 - len(tname) - 7))
-            length = 44
+        # The suffix assignments here are strictly for tasks with less than
+        # `length` chars.
+        length = 42 if section else 44
+        prefix = '  ' if section else ''
+        tname_length = ' ' * (56 - len(tname) - (len(prefix) + 7))
+        suffix = f'{tname_length}\n'
+
 
         if len(tname) > length:
-            for i, substr in enumerate(textwrap.wrap(tname, width=length)):
-                if section:
-                    suffix = '{}\n'.format(' ' * (56 - len(substr) - 9))
-                else:
-                    suffix = '{}\n'.format(' ' * (56 - len(substr) - 7))
+            for line, substr in enumerate(textwrap.wrap(tname, width=length)):
+                substr_length = ' ' * (56 - len(substr) - (len(prefix) + 7))
+                suffix = f'{substr_length}\n'
 
-                if i == 0:
+                if line == 0:
                     if task_num in check_list:
                         self.win.addstr(f'{prefix}{self.check}', curses.color_pair(clrs[7]))
                         self.win.addstr(f'{substr}{suffix}', curses.color_pair(clrs[4]))
                     else:
-                        self.win.addstr(f'{prefix}     □ {substr}{suffix}', curses.color_pair(clrs[4]))
+                        self.win.addstr(f'{prefix}{self.utask}{substr}{suffix}', curses.color_pair(clrs[4]))
                 else:
                     self.win.addstr(f'{prefix}       {substr}{suffix}', curses.color_pair(clrs[4]))
         else:
@@ -836,7 +828,7 @@ class Menu(object):
                 self.win.addstr(f'{prefix}{self.check}', curses.color_pair(clrs[7]))
                 self.win.addstr(f'{tname}{suffix}', curses.color_pair(clrs[4]))
             else:
-                self.win.addstr(f'{prefix}     □ {tname}{suffix}', curses.color_pair(clrs[4]))
+                self.win.addstr(f'{prefix}{self.utask}{tname}{suffix}', curses.color_pair(clrs[4]))
 
     def draw_sections(self, stdscr, check_list, clrs, proj_tasks, sect):
         """Draw sections.
