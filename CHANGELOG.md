@@ -3,3 +3,24 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+
+## 0.1.1 (2018-09-06)
+### Features
+ - Project and section renaming ([965d39e](https://github.com/bl0nd/todo/commit/965d39e))
+ - Ability to move tasks to different projects or sections ([a5cbd58](https://github.com/bl0nd/todo/commit/a5cbd58))
+
+### Modifications
+ - Added: nonexistent() to check for nonexistent project and section names ([00699db](https://github.com/bl0nd/todo/commit/00699db))
+ - Added: unrecognized argument handling ([00699db](https://github.com/bl0nd/todo/commit/00699db))
+ - Added: project name check helper function for tidier creating and renaming ([965d39e](https://github.com/bl0nd/todo/commit/965d39e))
+  
+### Fixed
+ - Todo script now executes universally ([7c90b0a](https://github.com/bl0nd/todo/commit/7c90b0a))
+ - section_delete() now iterates and deletes sections and tasks properly ([a5cbd58](https://github.com/bl0nd/todo/commit/a5cbd58))
+ - section_delete() now updates check lists ([00699db](https://github.com/bl0nd/todo/commit/00699db))
+ - get_updated_check() now doesn't immediately exit when archiving if the 1st project has no completed tasks, even though subsequent projects do ([00699db](https://github.com/bl0nd/todo/commit/00699db))
+
+
+## 0.1.0 (2018-11-18)
+ - Initial release
