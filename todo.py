@@ -84,7 +84,7 @@ class ArgumentParser(argparse.ArgumentParser):
 
         # Check for missing arguments (normal, create, delete)
         elif (error_msg_left == 'the following arguments are required' or
-                error_msg_right == ' expected one argument'):
+              error_msg_right == ' expected one argument'):
             sys.exit(message) 
         
         # Check for extra arguments (normal, create, delete, archive)
@@ -96,6 +96,8 @@ class ArgumentParser(argparse.ArgumentParser):
             else:
                 extra_args = "'{}'".format("', '".join(extra_args))
             sys.exit(f'error: unrecognized argument{suffix} {extra_args}.')
+        elif error_msg_left == 'argument section':
+            sys.exit('error: too many arguments')
         else:
             print('UNKNOWN ERROR:', message)
             sys.exit()
@@ -113,12 +115,14 @@ Modes:
 
 Normal mode options:
   general
-    -r LABEL   Rename a project or section.
+    -r LABEL                        Rename a project or section.
   tasks
-    -a LABEL   Add a task.
-    -d LABEL   Delete a task.
-    -c LABEL   Mark a task as complete.
-    -u LABEL   Mark a task as incomplete.
+    -a LABEL                        Add a task.
+    -d LABEL                        Delete a task.
+    -c LABEL                        Mark a task as complete.
+    -u LABEL                        Mark a task as incomplete.
+    -mp LABEL PROJECT               Move a task to a different project.
+    -ms LABEL PROJECT SECTION       Move a task to a different section.
 
   sections
     -sa LABEL  Add a section.
@@ -165,10 +169,13 @@ def create_parser(menu, todo_file):
     sp_normal.add_argument('-a', '--add')
     sp_normal.add_argument('-r', '--rename')
 
+
     mutual.add_argument('section', nargs='?')
-    sp_normal.add_argument('-d', '--taskdelete', type=int, dest='task_delete')
+    mutual.add_argument('-d', '--taskdelete', type=int, dest='task_delete')
     mutual.add_argument('-c', '--check')
     mutual.add_argument('-u', '--uncheck')
+    mutual.add_argument('-mp', '--move_to_proj', nargs=2)
+    mutual.add_argument('-ms', '--move_to_sect', nargs=3)
     mutual.add_argument('-sa', '--sectionadd', dest='section_add')
     mutual.add_argument('-sd', '--sectiondelete', dest='section_delete')
     # mutual.add_argument('-sc', '--sectioncheck', dest='section_check')
@@ -231,27 +238,26 @@ class Todo(object):
         self.args = args
         self.menu = menu
         self.todo_file = todo_file
-
-        with open(self.todo_file) as f:
-            self.data = json.load(f)
-            if not self.data and not args.create:
-                sys.exit('no projects exist.')
-
-        self.iter_data = list(self.data.items())
         self.project = args.project
         self.section = args.section
 
-        if self.project or self.section:
-            self.nonexistent_project_check()
+        with open(self.todo_file) as f:
+            self.data = json.load(f)
+            self.iter_data = list(self.data.items())
+            if not self.data and not args.create:
+                sys.exit('no projects exist.')
 
         if len(sys.argv) == 1:
             self.show()
         elif not args.create and not args.delete:
+            if self.project or self.section:
+                self.nonexistent_check()
             self.proj_sections, self.proj_tasks = self.find_project()
+            self.proj_tasks = self.data[self.project]['tasks']
 
     # Helper functions
 
-    def nonexistent_project_check(self):
+    def nonexistent_check(self):
         """Check for nonexistent project and section names.
 
         nonexistent project names in normal mode have to be handled at the
@@ -269,7 +275,7 @@ class Todo(object):
 
     def project_name_check(self, project_name):
         """Check for invalid project names (create/rename helper).
-        
+
         Args:
             project_name: (String) Either self.project or self.args.rename.
         
@@ -401,8 +407,8 @@ class Todo(object):
                 sections.append(list(self.iter_data[i][1]['sections']))
                 tasks.append(list(self.iter_data[i][1]['tasks'].items()))
 
-        # If we're not archiving and there are completed tasks, or if we are
-        # archiving, but a section is specified.
+        # If we're not archiving and there are completed tasks,
+        # or if we are archiving, but a section is specified.
         if tasks and not self.args.archive or (self.args.archive and self.args.section):
             return (*sections, dict(*tasks))
         else:
@@ -459,7 +465,7 @@ class Todo(object):
         new_data = {}
         for name, prj in self.data.items():
             if self.section:
-                new_data[name] = prj
+                new_data[name] = prj  # maybe put and AND somewhere up there
                 if self.project == name:
                     for i, section in enumerate(prj['sections']):
                         if self.section == section['name']:
@@ -559,38 +565,35 @@ class Todo(object):
 
     # Task functions
 
-    def add(self):
+    def add(self, label, project, section=None):
         """Add a task to a project.
 
         If a section is specified, the task's number will be added to the
           corresponding section's key `task` to indicate it's a section task.
         """
-        label = self.args.add
-
-        if label in self.proj_tasks.values():
-            sys.exit(f'task "{label}" already exists in project "{self.project}"')
+        proj_tasks = self.data[project]['tasks']
+        if label in proj_tasks.values():
+            sys.exit(f'task "{label}" already exists in project "{project}"')
 
         # add task
-        self.proj_tasks[len(self.proj_tasks) + 1] = label
-        self.data[self.project]['tasks'] = self.proj_tasks
+        proj_tasks[len(proj_tasks) + 1] = label
         self.write()
 
         # update section if a section task is added
-        if self.section:
-            sections = self.data[self.project]['sections']
-            for section in self.data[self.project]['sections']:
-                if self.section == section.get('name'):
-                    section['tasks'].append(len(self.proj_tasks))
+        if section:
+            for sect in self.data[project]['sections']:
+                if section == sect.get('name'):
+                    sect['tasks'].append(len(proj_tasks))
                     self.write()
 
     def task_delete(self):
         """Delete a task from a project."""
         position = self.args.task_delete
-        if position <= len(self.proj_tasks):
+        if position > len(self.proj_tasks):
+            sys.exit(f'project "{self.project}" has no task #{position}.')
+        else:
             # delete task
-            for project, info in self.iter_data:
-                if self.project == project:
-                    self.data[project]['tasks'].pop(str(position))
+            self.proj_tasks.pop(str(position))
 
             # update section pointers
             section_tasks = []
@@ -613,20 +616,16 @@ class Todo(object):
                     self.data[self.project]['check'][i] = v - 1
 
             # update task list indices
-            updated_tasks = self.data[self.project]['tasks'].items()
             new_tasks = {}
-            for old_index, task in updated_tasks:
+            for old_index, task in self.proj_tasks.items():
                 if position <= int(old_index):
                     new_index = str(int(old_index) - 1)
                     new_tasks[new_index] = task
                 else:
                     new_tasks[old_index] = task
-
-            # dump to file
             self.data[self.project]['tasks'] = new_tasks
+
             self.write()
-        else:
-            sys.exit(f'project "{self.project}" has no task #{position}.')
 
     def check(self):
         """Mark a task as checked."""
@@ -662,8 +661,53 @@ class Todo(object):
         else:
             sys.exit(f'task "{label}" does not exist.')
 
-    # >>> Section functions
+    def move_task(self):
+        ttm = self.args.move_to_proj if self.args.move_to_proj else self.args.move_to_sect
+        ttm_pos = len(self.proj_tasks)
+        new_tasks = {}
 
+        # project check
+        if ttm[1] not in [project for project in self.data.keys()]:
+            sys.exit(f'error: project "{ttm[1]}" does not exist')
+
+        # section check
+        existing_sects = [sect['name'] for sect in self.data[ttm[1]]['sections']]
+        if self.args.move_to_sect and ttm[2] not in existing_sects:
+            sys.exit(f'error: section "{ttm[2]}" does not exist in project "{ttm[1]}"')
+        
+        # find task
+        for pos, task in self.proj_tasks.items():
+            if task == ttm[0]:
+                ttm_pos = pos
+            else:
+                new_pos = int(pos) if int(pos) < int(ttm_pos) else int(pos)-1
+                new_tasks[new_pos] = task
+        self.data[self.project]['tasks'] = new_tasks
+        self.proj_tasks.pop(ttm_pos)
+
+        # update check
+        if int(ttm_pos) in self.data[self.project]['check']:
+            self.data[self.project]['check'].remove(int(ttm_pos))
+        for i,v in enumerate(self.data[self.project]['check']):
+            self.data[self.project]['check'][i] = v if v < int(ttm_pos) else v-1
+
+        # update sections
+        for i,sect in enumerate(self.proj_sections):
+            new_sects = []
+            for task_num in sect['tasks']:
+                if int(ttm_pos) > task_num:
+                    new_sects.append(task_num)
+                elif int(ttm_pos) < task_num:
+                    new_sects.append(task_num-1)
+            self.proj_sections[i]['tasks'] = new_sects
+
+        # Add (writes to file there)
+        if self.args.move_to_proj:
+            self.add(ttm[0], ttm[1])
+        else:
+            self.add(ttm[0], ttm[1], ttm[2])
+
+    # >>> Section functions
 
     def section_add(self):
         """Add a section."""
@@ -678,28 +722,45 @@ class Todo(object):
     def section_delete(self):
         """Delete a section."""
         label = self.args.section_delete
+
         if label not in [sect.get('name') for sect in self.proj_sections]:
             sys.exit(f'section "{label}" does not exist in project "{self.project}".')
 
         sections = self.data[self.project]['sections']
-        tasks = self.data[self.project]['tasks']
         check = self.data[self.project]['check']
 
         # delete section and section tasks
         for i, sect in enumerate(sections):
             if label == sect.get('name'):
-                to_remove = sect.get('tasks')
                 del sections[i]
-                for task in to_remove:
-                    tasks.pop(str(task))
-                self.data[self.project]['check'] = list(set(check) - set(to_remove))
+                for task in sect.get('tasks'):
+                    self.proj_tasks.pop(str(task))
+                self.data[self.project]['check'] = list(set(check) - set(sect.get('tasks')))
 
         # update task indices
         new_tasks = {}
-        for i,v in enumerate(tasks.keys()):
-            if len(tasks.keys()) > i:
-                new_tasks[str(i+1)] = tasks.get(v)
+        for i,task_num in enumerate(self.proj_tasks.keys()):
+            if len(self.proj_tasks.keys()) > i:
+                new_tasks[str(i+1)] = self.proj_tasks.get(task_num)
+        self.data[self.project]['tasks'] = new_tasks
 
+        # update check list
+        for i, task_num in enumerate(self.data[self.project]['check']):
+            task = self.proj_tasks[str(task_num)]
+            for tnum, t in self.data[self.project]['tasks'].items():
+                if t == task:
+                    self.data[self.project]['check'][i] = tnum
+
+        # update sections
+        all_sect_tasks, new_tnames = self.get_updated_sections(
+                                       self.data[self.project],
+                                       self.data[self.project]['sections'],
+                                       self.proj_tasks,
+                                       self.data[self.project]['tasks'],
+                                       set(self.data[self.project]['check']))
+        for sect in self.data[self.project]['sections']:
+            sect['tasks'] = all_sect_tasks.get(sect['name'])
+        
         self.write()
 
 
@@ -746,7 +807,6 @@ class Menu(object):
                        "g": (9, 10, 11, 12, 13, 14, 15, 16),
                        "b": (17, 18, 19, 20, 21, 22, 23, 24),
                        "v": (25, 26, 27, 28, 29, 30, 31, 32)}
-
 
         # Prefixes
         self.hash   = '     # '
@@ -861,7 +921,6 @@ class Menu(object):
         prefix = '  ' if section else ''
         tname_length = ' ' * (56 - len(tname) - (len(prefix) + 7))
         suffix = f'{tname_length}\n'
-
 
         if len(tname) > length:
             for line, substr in enumerate(textwrap.wrap(tname, width=length)):
@@ -1052,7 +1111,6 @@ def main(todo_file):
 
     menu = wrapper(Menu)
     parser = create_parser(menu, todo_file)
-    print(parser)
 
     todo = Todo(menu, parser, todo_file)
 
@@ -1064,13 +1122,15 @@ def main(todo_file):
         todo.archive()
     else:
         if parser.add:
-            todo.add()
+            todo.add(parser.add, parser.project, parser.section)
         elif parser.task_delete:
             todo.task_delete()
         elif parser.check:
             todo.check()
         elif parser.uncheck:
             todo.uncheck()
+        elif parser.move_to_proj or parser.move_to_sect:
+            todo.move_task()
         elif parser.section_add:
             todo.section_add()
         elif parser.section_delete:
