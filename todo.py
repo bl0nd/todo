@@ -89,18 +89,19 @@ class ArgumentParser(argparse.ArgumentParser):
         
         # Check for extra arguments (normal, create, delete, archive)
         elif error_msg_left == 'unrecognized arguments':
-            extra_args = message.split(':')[1].split(' ')[1:]
+            extra_args = error_msg_right.split(' ')[1:]
             suffix = '' if len(extra_args) == 1 else 's'
             if len(extra_args) == 1:
                 extra_args = "'{}'".format(extra_args[0])
             else:
                 extra_args = "'{}'".format("', '".join(extra_args))
             sys.exit(f'error: unrecognized argument{suffix} {extra_args}.')
+        
+        # Check for too many arguments (it'll think you're providing a section)
         elif error_msg_left == 'argument section':
             sys.exit('error: too many arguments')
         else:
-            print('UNKNOWN ERROR:', message)
-            sys.exit()
+            sys.exit(f'UNKNOWN ERROR: {message}')
 
     def print_help(self):
         """Print custom help menu."""
@@ -154,6 +155,7 @@ def create_parser(menu, todo_file):
             sys.exit('error: terminal window is not large enough.')
         sys.exit(0)
 
+    # Make sure init
     with open(todo_file) as f:
         data = json.load(f)
     existing_prjs = [project for project in data.keys()]
@@ -1094,16 +1096,28 @@ class Menu(object):
 [+++++++++++++++++++++++++++++++++++++++++++++]
 """
 def check_if_todo_repo(todo_file):
-    """Check for .todo config file."""
-    todo_path = todo_file.split("/.todo")[0]
+    """Check for a .todo configuration file.
+    
+    If the user runs `todo init`, create a .todo file if one doesn't exist,
+      otherwise exit with an error.
+
+    Any other `todo` command in a non-todo repository will exit with an error.
+
+    Args:
+        todo_file (String): The absolute path of the .todo configuration file.
+
+    Returns:
+        None
+    """
+    todo_dir = todo_file.split("/.todo")[0]
     if len(sys.argv) == 2 and sys.argv[1] == 'init':
             if not Path(todo_file).exists():
                 Path(todo_file).write_text('{}')
                 sys.exit(0)
             else:
-                sys.exit(f'error: {todo_path} is already a todo respository.')
-    elif not Path(todo_file).exists():
-        sys.exit(f'error: {todo_path} is not a todo repository.')
+                sys.exit(f'error: "{todo_dir}" is already a todo respository.')
+    elif len(sys.argv) > 2 and sys.argv[1] == 'init':
+        sys.exit('error: invalid initialization.')
 
 def main(todo_file):
     """Main program, used when run as a script."""
