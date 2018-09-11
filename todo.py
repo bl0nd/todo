@@ -1107,7 +1107,7 @@ def check_if_todo_repo(todo_file):
                 Path(todo_file).write_text('{}')
                 sys.exit(0)
             else:
-                sys.exit(f'error: "{todo_dir}" is already a todo respository.')
+                sys.exit(f'error: todo repository already exists: {todo_file}')
     elif len(sys.argv) > 2 and sys.argv[1] == 'init':
         sys.exit('error: invalid initialization.')
 
