@@ -232,7 +232,6 @@ class Todo(object):
         section:       (String)    Name of section to create, view, or modify.
         data:          (dict)      Contents of 'todo_file'.
         iter_data:     (list)      List representation of 'data'. (for indexing)
-
         proj_sections: (list)      Contains dicts with section names as keys and
                                      section tasks as values.
         proj_tasks:    (dict)      Task number as keys, task label as values.
@@ -831,12 +830,6 @@ class Menu(object):
                 x + 5:    Hash
                 x + 6:    Section name
                 x + 7:    Checkmark
-
-        Args:
-            None
-
-        Returns:
-            None
         """
         curses.use_default_colors()
 
@@ -887,15 +880,12 @@ class Menu(object):
           r, g, b), and and project's name.
 
         Args:
-            stdscr: (Window) Represents the entire screen.
-            clrs: (tuple) 8 sequential numbers that corresponds to the proper
-                curses color pair.
-            proj_color: (String) Color of project (e.g., r, g, b).
-            proj_name: (String) Name of project.
-            end_banner: (String) A line full of spaces to finish the banner.
-
-        Returns:
-            None
+            stdscr:     (Window)  Represents the entire screen.
+            clrs:       (tuple)   8 sequential numbers that corresponds to the
+                                    proper curses color pair.
+            proj_color: (String)  Color of project (e.g., r, g, b).
+            proj_name:  (String)  Name of project.
+            end_banner: (String)  A line full of spaces to finish the banner.
         """
         end_banner = '"{}\n'.format(' ' * (56 - len(proj_name) - 9))
         self.win.addstr(' !!! ', curses.color_pair(clrs[0]))
@@ -908,17 +898,17 @@ class Menu(object):
         """Draw regular and section tasks.
 
         Args:
-            stdscr: (Window) Represents the entire screen.
-            task_num: (int) The current task's index.
-            tname: (String) Name of task.
-            check_list: (list) Contains task indices that are marked as checked.
-            clrs: (tuple) 8 sequential numbers that corresponds to the proper
-                curses color pair.
-            section: (boolean) Indicates whether the current task is a regular
-                or section task.
+            stdscr:     (Window)  Represents the entire screen.
+            task_num:   (int)     The current task's index.
+            tname:      (String)  Name of task.
+            check_list: (list)    Contains task numbers that are checked.
+            clrs:       (tuple)   8 sequential numbers that correspond to the
+                                    proper curses color pair.
+            section:    (boolean) Indicates whether the current task is a
+                                    regular or section task.
         """
         # The suffix assignments here are strictly for tasks with less than
-        # `length` chars.
+        # 'length' chars.
         length = 42 if section else 44
         prefix = '  ' if section else ''
         tname_length = ' ' * (56 - len(tname) - (len(prefix) + 7))
@@ -948,16 +938,13 @@ class Menu(object):
         """Draw sections.
 
         Args:
-            stdscr: (Window) Represents the entire screen.
-            check_list: (list) Task indices for tasks marked as checked.
-            clrs: (tuple) 8 sequential numbers that corresponds to the proper
-                curses color pair.
-            proj_tasks: (dict) All tasks and their index for the specified
-                project.
-            sect: (dict) Name and tasks for the current section.
-
-        Returns:
-            None
+            stdscr:     (Window) Represents the entire screen.
+            check_list: (list)   Task indices for tasks marked as checked.
+            clrs:       (tuple)  8 sequential numbers that correspond to the
+                                   proper curses color pair.
+            proj_tasks: (dict)   All tasks and their index for the specified
+                                   project.
+            sect:       (dict)   Name and tasks for the current section.
         """
         # Section
         end_sec = '{}\n'.format(' ' * (56 - len(sect.get('name')) - 7))
@@ -978,16 +965,13 @@ class Menu(object):
             and its tasks.
 
         Args:
-            stdscr: (Window) Represents the entire screen.
-            proj_sections: (list) All sections in dictionaries (which contains
-                the section name and its tasks.)
-            proj_tasks: (dict) All tasks and their index for the specified
-                project.
-            project: (String) Name of the specified project.
-            section: (String) Name of the specified section.
-
-        Returns:
-            None
+            stdscr:        (Window) Represents the entire screen.
+            proj_sections: (list)   All sections (in dicts which contains the
+                                      section name and its tasks.)
+            proj_tasks:    (dict)   All tasks and their index for the specified
+                                      project.
+            project:       (String) Name of the specified project.
+            section:       (String) Name of the specified section.
         """
         section_tasks = {str(num) for sect in proj_sections for num in sect.get('tasks')}
         check_list = projects.get(project).get('check')
@@ -1040,17 +1024,12 @@ class Menu(object):
         """Draw all projects, sections, and tasks.
 
         Args:
-            stdscr: (Window) Represents the entire screen.
-            projects: (dict) All projects (as keys) and their sections and
-                tasks (as values).
-            iter_projects: (list) All projects (as list[i][0]) and their
-                sections and tasks (list[i][1]).
-
-        Returns:
-            None
+            stdscr:        (Window) Represents the entire screen.
+            projects:      (dict)   All projects (as keys) and their sections and
+                                      tasks (as values).
+            iter_projects: (list)   All projects (as list[i][0]) and their
+                                      sections and tasks (list[i][1]).
         """
-        # The reason we have to use enumerate(projects) and thus iter_projects
-        # during assignment is so we can get the correct proj_color with i.
         for i, proj in enumerate(projects):
             proj_sections = iter_projects[i][1]['sections']
             proj_tasks = iter_projects[i][1]['tasks']
@@ -1117,12 +1096,11 @@ def check_if_todo_repo(todo_file):
         sys.exit('error: invalid initialization.')
 
 def main(todo_file):
-    """Main program, used when run as a script."""
+    """Main program, used when ran as a script."""
     check_if_todo_repo(todo_file)
 
     menu = wrapper(Menu)
     parser = create_parser(menu, todo_file)
-    print(parser)
     todo = Todo(menu, parser, todo_file)
 
     # Non-normal modes
