@@ -149,8 +149,8 @@ def create_parser(menu, todo_file):
     sp = parser.add_subparsers()
 
     # If in normal mode and no proj/sect is specified, display all projects
-    if len(sys.argv) == 1:
-        parser.set_defaults(project=None, section=None)
+    if len(sys.argv) == 1: 
+        parser.set_defaults(project=None, section=None, create=None)
         try:
             Todo(menu, parser.parse_args(), todo_file)
         except curses.error as e:
@@ -317,7 +317,7 @@ class Todo(object):
         Args:
             project_name: (String) Either self.project or self.args.rename.
         """
-        blacklist = ['archive', 'create', 'delete', 'init']
+        blacklist = ['archive', 'create', 'delete']
         existing_projects = [project for project in self.data.keys()]
 
         if not project_name.isalnum():
@@ -1090,31 +1090,9 @@ class Menu(object):
                    Main
 [+++++++++++++++++++++++++++++++++++++++++++++]
 """
-def check_if_todo_repo(todo_file):
-    """Check for a .todo configuration file.
-    
-    If the user runs `todo init`, create a .todo file if one doesn't exist,
-      otherwise exit with an error.
-
-    Any other `todo` command in a non-todo repository will exit with an error.
-
-    Args:
-        todo_file: (String) Absolute path of the .todo configuration file.
-    """
-    todo_dir = todo_file.split("/.todo")[0]
-    if len(sys.argv) == 2 and sys.argv[1] == 'init':
-            if not Path(todo_file).exists():
-                Path(todo_file).write_text('{}')
-                sys.exit(0)
-            else:
-                sys.exit(f'error: todo repository already exists: {todo_file}')
-    elif len(sys.argv) > 2 and sys.argv[1] == 'init':
-        sys.exit('error: invalid initialization.')
 
 def main(todo_file):
     """Main program, used when ran as a script."""
-    check_if_todo_repo(todo_file)
-
     menu = wrapper(Menu)
     parser = create_parser(menu, todo_file)
     todo = Todo(menu, parser, todo_file)
@@ -1151,5 +1129,5 @@ def main(todo_file):
 
 
 if __name__ == '__main__':
-    full_path = os.path.realpath(__file__)
-    main(todo_file=f'{os.path.dirname(full_path)}/.todo')
+    todo_dir = os.path.dirname(os.path.realpath(__file__))
+    main(todo_file=f'{todo_dir}/.todo')
