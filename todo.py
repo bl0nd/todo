@@ -71,9 +71,12 @@ class ArgumentParser(argparse.ArgumentParser):
     """Overriding class for custom help/usage message."""
     def error(self, message):
         """Custom error messages.
+
+        Args:
+            message: (String) The default argparse error message raised.
         
-        This is to avoid an ugly error message for something like `$ todo aaaaa`
-        when "aaaaa" isn't a project name.
+        Returns:
+            None
         """
         error_msg_left = message.split(':')[0]
         error_msg_right = message.split(':')[1]
@@ -135,10 +138,12 @@ Normal mode options:
 def create_parser(menu, todo_file):
     """Create a command-line parser.
 
-    For a custom usage menu, uses an overridden `ArgumentParser` instance.
+    For a custom usage menu and error handling, uses an overridden
+      ArgumentParser instance.
 
     Args:
-        todo_file: (String) Absolute path of .todo.
+        menu: (Menu) Instance of our curses wrapped drawing class.
+        todo_file: (String) Absolute path of the .todo configuration file.
 
     Returns:
         A Namespace object containing the command-line flags and their state.
@@ -146,7 +151,7 @@ def create_parser(menu, todo_file):
     parser = ArgumentParser()
     sp = parser.add_subparsers()
 
-    # If in normal mode and no project/section specified, display all projects
+    # If in normal mode and no proj/sect is specified, display all projects
     if len(sys.argv) == 1:
         parser.set_defaults(project=None, section=None)
         try:
@@ -155,32 +160,28 @@ def create_parser(menu, todo_file):
             sys.exit('error: terminal window is not large enough.')
         sys.exit(0)
 
-    # Make sure init
     with open(todo_file) as f:
-        data = json.load(f)
-    existing_prjs = [project for project in data.keys()]
+        existing_projects = [project for project in json.load(f).keys()]
 
     # Normal Mode
     sp_normal = sp.add_parser('normal',
-        aliases=[*existing_prjs],
+        aliases=[*existing_projects],
         description='View or modify projects, sections, and tasks.',
         help='View or modify existing projects, sections, and tasks')
-    mutual = sp_normal.add_mutually_exclusive_group()
-
     sp_normal.set_defaults(project=sys.argv[1], create=False, delete=False, archive=False)
     sp_normal.add_argument('-a', '--add')
     sp_normal.add_argument('-r', '--rename')
 
-
-    mutual.add_argument('section', nargs='?')
-    mutual.add_argument('-d', '--taskdelete', type=int, dest='task_delete')
-    mutual.add_argument('-c', '--check')
-    mutual.add_argument('-u', '--uncheck')
-    mutual.add_argument('-mp', '--move_to_proj', nargs=2)
-    mutual.add_argument('-ms', '--move_to_sect', nargs=3)
-    mutual.add_argument('-sa', '--sectionadd', dest='section_add')
-    mutual.add_argument('-sd', '--sectiondelete', dest='section_delete')
-    # mutual.add_argument('-sc', '--sectioncheck', dest='section_check')
+    section = sp_normal.add_mutually_exclusive_group()
+    section.add_argument('section', nargs='?')
+    section.add_argument('-d', '--taskdelete', type=int, dest='task_delete')
+    section.add_argument('-c', '--check')
+    section.add_argument('-u', '--uncheck')
+    section.add_argument('-mp', '--move_to_proj', nargs=2)
+    section.add_argument('-ms', '--move_to_sect', nargs=3)
+    section.add_argument('-sa', '--sectionadd', dest='section_add')
+    section.add_argument('-sd', '--sectiondelete', dest='section_delete')
+    # section.add_argument('-sc', '--sectioncheck', dest='section_check')
 
     # Create Mode
     sp_create = sp.add_parser('create',
@@ -218,27 +219,28 @@ class Todo(object):
     """Class for managing TODO list states.
 
     Args:
-        menu:      (Menu)       Instance of our curses wrapped drawing class, `Menu`.
+        menu:      (Menu)       Instance of our curses wrapped drawing class.
         args:      (Namespace)  Contains command-line flags and their states.
-        todo_file: (String)     The JSON file to read from and write to (the option
-                                    to specify exists so that when testing, a test
-                                    JSON file can be used instead).
+        todo_file: (String)     Absolute path of the .todo configuration file.
 
     Attributes:
-        menu:          (Menu)    arg: menu
-        todo_file:     (String)  arg: todo_file
-        data:          (dict)    JSON file containing the TODO list.
-        iter_data:     (list)    List representation of `data` (for indexing).
-        project:       (String)  Name of project to view or modify.
-        section:       (String)  Name of section to create, view, or modify.
-        proj_sections: (list)    Contains dicts with section names as keys and
-                                    section tasks as values.
-        proj_tasks:    (dict)    Task number as keys, task label as values.
+
+        menu:          (Menu)      see arg: menu
+        args:          (Namespace) see arg: args
+        todo_file:     (String)    see arg: todo_file
+        project:       (String)    Name of project to view or modify.
+        section:       (String)    Name of section to create, view, or modify.
+        data:          (dict)      Contents of 'todo_file'.
+        iter_data:     (list)      List representation of 'data'. (for indexing)
+
+        proj_sections: (list)      Contains dicts with section names as keys and
+                                     section tasks as values.
+        proj_tasks:    (dict)      Task number as keys, task label as values.
     """
     def __init__(self, menu, args=None, todo_file=None):
         """Constructor. See class docstring."""
-        self.args = args
         self.menu = menu
+        self.args = args
         self.todo_file = todo_file
         self.project = args.project
         self.section = args.section
@@ -255,6 +257,7 @@ class Todo(object):
             if self.project or self.section:
                 self.nonexistent_check()
             self.proj_sections, self.proj_tasks = self.find_project()
+            # self.proj_sections = self.data[self.project]['sections']
             self.proj_tasks = self.data[self.project]['tasks']
 
     # Helper functions
@@ -262,21 +265,55 @@ class Todo(object):
     def nonexistent_check(self):
         """Check for nonexistent project and section names.
 
-        nonexistent project names in normal mode have to be handled at the
+        Nonexistent project names in normal mode have to be handled at the
         parser, otherwise our subparsers mess up.
+
+        Helper:
+            todo.__init__()
         """
-        # Check project name (delete mode)
         if self.project not in self.data.keys() and not self.args.create:
+            # Check project name (delete mode)
             sys.exit(f'project "{self.project}" does not exist.')
-        # Check section name
         elif self.section:
+            # Check section name (normal, delete, archive mode)
             proj_sections = [sect['name'] for sect in self.data[self.project]['sections']]
             if self.section not in proj_sections:
-                sys.exit(f'section "{self.section}" does not exist in project '
-                         f'"{self.project}".')
+                sys.exit(f'section "{self.section}" does not exist in project "{self.project}".')
+
+    def find_project(self):
+        """Return the sections and tasks of a project.
+
+        Helper:
+            todo.__init__()
+
+        Args:
+            None
+
+        Returns:
+            A tuple made of the specified project's sections in a list and tasks
+            in a dict.
+        """
+        sections = []
+        tasks = []
+
+        for i, project in enumerate(self.data.keys()):
+            if self.project == project:
+                sections.append(list(self.iter_data[i][1]['sections']))
+                tasks.append(list(self.iter_data[i][1]['tasks'].items()))
+
+        # If we're not archiving and there are completed tasks,
+        # or if we are archiving, but a section is specified.
+        if tasks and not self.args.archive or (self.args.archive and self.args.section):
+            return (*sections, dict(*tasks))
+        else:
+            return (None, None)
 
     def project_name_check(self, project_name):
-        """Check for invalid project names (create/rename helper).
+        """Check for invalid project names.
+
+        Helper:
+            todo.create()
+            todo.rename()
 
         Args:
             project_name: (String) Either self.project or self.args.rename.
@@ -306,8 +343,9 @@ class Todo(object):
     def get_updated_check(self, project):
         """Return an updated checked list (archive helper).
         
-        If a section is specified, the checked list will only contain tasks in
-        that section. Otherwise, a list with all checked items will be returned.
+        If a section is specified, the checked list returned will only contain
+          tasks in that section. Otherwise, a list with all checked items will
+          be returned.
         
         Args:
             project: (dict) Project's name, sections, tasks, and check list.
@@ -324,23 +362,25 @@ class Todo(object):
                 sys.exit(f'No completed tasks in section "{self.section}" of project "{self.project}".')
         else:
             checked = {task_num for task_num in project.get('check')}
-            if self.project and not checked:
+            if not checked:
                 sys.exit(f'No completed tasks in project "{self.project}".')
         return checked
 
-    def delete_tasks(self, project, checked):
-        """Return updated task list after deleting checked tasks (archive helper).
-
-        old_tasks is also returned so that get_updated_sections() can map the
-        new tasks with their old index position.
+    def no_checked_tasks(self, project, checked):
+        """Get an updated task list with no checked tasks.
         
+        Helper:
+            archive()
+
         Args:
-            project:    (dict)   Project's name, sections, tasks, and check list.
-            checked:    (set)    Completed tasks to delete.
+            project: (dict) Project's name, sections, tasks, and check list.
+            checked: (set)  Completed tasks to delete.
         
         Returns:
-            old_tasks: (list) All pre-existing t4asks.
-            new_tasks: (dict) All tasks post-archive (value) and their position (key).
+            old_tasks: (list) All pre-existing tasks. (Used to map new tasks
+                                with old index positions)
+            new_tasks: (dict) All tasks post-archive (as value) and their
+                                position (as key).
             """
         old_tasks = project['tasks']
         new_tasks = {}
@@ -351,70 +391,49 @@ class Todo(object):
         return old_tasks, new_tasks
 
     def get_updated_sections(self, project, sections, old_tasks, new_tasks, checked):
-        """Get an updated section task list (archive helper).
-        
-        new_tnames is returned so that we can update remaining check list values.
-        
+        """Get an updated section task list after completed tasks are removed.
+                
+        Helper:
+            archive()
+            achive_projects()
+
         Args:
-            project: (dict) All tasks and their position as keys.
-            sections: (list) The current project's sections, which is either
-                self.proj_sections is a section is specified, or project['sections']
-                otherwise.
-            old_tasks: (dict) Comprehensive task list before deleting checked tasks.
-            new_tasks: (dict) Comprehensive task list after deleting checked tasks.
-            checked: (set) Updated check list.
+            project:   (dict) All tasks and their position as keys.
+            sections:  (list) The current project's sections, which is either
+                                self.proj_sections if a section is specified,
+                                or project['sections'] otherwise.
+            old_tasks: (dict) Task list before checked tasks are deleted.
+            new_tasks: (dict) Task list after checked tasks are deleted.
+            checked:   (set)  Updated check list.
         
         Returns:
-            all_sect_tasks: (dict) Each section (name as key) and its unchecked
-                tasks.
-            new_tnames: (list) All task names after archiving."""
+            all_sections: (dict) Each section (name as key) and its unchecked
+                                     tasks (as values) after archiving.
+            new_tnames:     (list) All task names after archiving. (for updating
+                                     remaining check list values)
+        """
         new_tnames = list(new_tasks.values())
-        all_sect_tasks = {}
+        all_sections = {}
 
-        # Create new section list with unchecked tasks for the current project
         for sect in sections:
             unchecked_sect_tasks = list(set(sect['tasks']) - checked)
             for i, task_num in enumerate(unchecked_sect_tasks):
                 old_tname = old_tasks.get(str(task_num))
                 unchecked_sect_tasks[i] = new_tnames.index(old_tname) + 1
-            all_sect_tasks[sect['name']] = sorted(unchecked_sect_tasks)
-        return all_sect_tasks, new_tnames
+            all_sections[sect['name']] = sorted(unchecked_sect_tasks)
+
+        return all_sections, new_tnames
 
     # General functions
 
     def write(self):
-        """Write changes to the TODO list's JSON file.
+        """Write changes to todo's configuration file..
 
         Normally, it will be .todo. However, when testing, it'll use the test
-            file .test_todo.
+          file .test_todo.
         """
         with open(self.todo_file, 'w') as f:
             json.dump(self.data, f)
-
-    def find_project(self):
-        """Return the sections and tasks of a project.
-
-        Args:
-            None
-
-        Returns:
-            A tuple made of the specified project's sections in a list and tasks
-            in a dict.
-        """
-        sections = []
-        tasks = []
-
-        for i, project in enumerate(self.data.keys()):
-            if self.project == project:
-                sections.append(list(self.iter_data[i][1]['sections']))
-                tasks.append(list(self.iter_data[i][1]['tasks'].items()))
-
-        # If we're not archiving and there are completed tasks,
-        # or if we are archiving, but a section is specified.
-        if tasks and not self.args.archive or (self.args.archive and self.args.section):
-            return (*sections, dict(*tasks))
-        else:
-            return (None, None)
 
     def show(self):
         """Display TODO list.
@@ -448,7 +467,7 @@ class Todo(object):
                 self.section)
         else:
             wrapper(self.menu.draw_all, self.data, self.iter_data)
-
+    
     def create(self):
         """Create a new project."""
         self.project_name_check(self.project)
@@ -459,6 +478,72 @@ class Todo(object):
         """Delete a project."""
         self.data.pop(self.project)
         self.write()
+
+    def archive(self):
+        """Delete completed tasks.
+
+        project[x] assignments modify self.data, which is what is eventually
+          written to 'todo_file'.
+        """
+        # Exit if we're archiving all projects and there are no completed tasks
+        if not self.project:
+            all_checked_tasks = [task for prj in self.data.values() for task in prj['check']]
+            if not all_checked_tasks:
+                sys.exit('no completed tasks in any project.')
+
+        if self.section:
+            # Update check list
+            project = self.data[self.project]
+            checked = self.get_updated_check(project)
+            project['check'] = list(set(project['check']) - checked)
+
+            # Delete tasks
+            old_tasks, new_tasks = self.no_checked_tasks(project, checked)
+            project['tasks'] = new_tasks
+
+            # Update sections
+            all_sections, new_tnames = self.get_updated_sections(project, 
+                self.proj_sections, old_tasks, new_tasks, checked)
+            for sect in project['sections']:
+                sect['tasks'] = all_sections.get(sect['name'])
+
+            # Update check list values
+            for i, task in enumerate(project['check']):
+                old_tnames = old_tasks.get(str(task))
+                project['check'][i] = new_tnames.index(old_tnames) + 1
+        elif self.project:
+            self.archive_projects(self.data[self.project])
+        else:
+            for name, project in self.data.items():
+                self.archive_projects(project)
+
+        self.write()
+
+    def archive_projects(self, project):
+        """Delete completed tasks for projects.
+
+        project[x] assignments modify self.data, which is what is eventually
+          written to 'todo_file'.
+
+        Args:
+            project: (dict) A project's sections, tasks, and check list.
+        
+        Returns:
+            None
+        """
+        # Empty check list
+        checked = self.get_updated_check(project)
+        project['check'] = []
+
+        # Delete tasks
+        old_tasks, new_tasks = self.no_checked_tasks(project, checked)
+        project['tasks'] = new_tasks
+
+        # Update sections
+        all_sections, new_tnames = self.get_updated_sections(project,
+            project['sections'], old_tasks, new_tasks, checked)
+        for sect in project['sections']:
+            sect['tasks'] = all_sections.get(sect['name'])
 
     def rename(self):
         """Rename a project or section."""
@@ -480,106 +565,25 @@ class Todo(object):
         self.data = new_data
         self.write()
 
-    def archive(self):
-        """Delete completed tasks for sections.
-
-        Bug:
-            When assigning new section tasks to sect['tasks'], we indirectly
-              modify self.data since we're iterating over self.proj_sections.
-              Because we didn't iterate over self.proj_tasks, we just assigned
-              new_tasks to it, that didn't affect self.data.
-              So we can either call it a feature and not include:
-
-                    project['sections'] = self.proj_sections
-
-              or we can fix get_updated_sections() so that it returns an updated
-              copy of self.proj_sections.
-
-              Or we can just not change self.proj_sections/tasks since we aren't
-              going to call self.show().
-        
-        Args:
-            None
-
-        Returns:
-            None
-        """
-        #   Exit if there's no completed tasks and we're archiving all projects.
-        #   Also, avoid exiting if there are checked tasks in a non-1st project.
-        if not self.project:
-            all_checked_tasks = [task for prj in self.data.values() for task in prj['check']]
-            if not all_checked_tasks:
-                sys.exit('no completed tasks in any project.')
-
-        if self.section:
-            # Update check list
-            project = self.data[self.project]
-            checked = self.get_updated_check(project)
-            project['check'] = list(set(project['check']) - checked)
-
-            # Delete tasks
-            old_tasks, new_tasks = self.delete_tasks(project, checked)
-            project['tasks'] = new_tasks
-
-            # Update sections
-            all_sect_tasks, new_tnames = self.get_updated_sections(project, 
-                self.proj_sections, old_tasks, new_tasks, checked)
-            for sect in self.proj_sections:
-                if sect['name'] in all_sect_tasks.keys():
-                    sect['tasks'] = all_sect_tasks.get(sect['name'])
-
-            # Update check list values
-            for i, task in enumerate(project['check']):
-                old_tnames = old_tasks.get(str(task))
-                project['check'][i] = new_tnames.index(old_tnames) + 1
-        elif self.project:
-            self.archive_projects(self.data[self.project])
-        else:
-            for name, project in self.data.items():
-                self.archive_projects(project)
-
-        self.write()
-
-    def archive_projects(self, project):
-        """Delete completed tasks for projects.
-        
-        Args:
-            project: (dict) A project's sections, tasks, and check list.
-        
-        Returns:
-            None
-        """
-        # Empty check list
-        checked = self.get_updated_check(project)
-        project['check'] = []
-
-        # Delete tasks
-        old_tasks, new_tasks = self.delete_tasks(project, checked)
-        project['tasks'] = new_tasks
-
-        # Update sections
-        all_sect_tasks, new_tnames = self.get_updated_sections(project,
-            project['sections'], old_tasks, new_tasks, checked)
-        for sect in project['sections']:
-            if sect['name'] in all_sect_tasks.keys():
-                sect['tasks'] = all_sect_tasks.get(sect['name'])
-
-
     # Task functions
 
     def add(self, label, project, section=None):
         """Add a task to a project.
 
-        If a section is specified, the task's number will be added to the
-          corresponding section's key `task` to indicate it's a section task.
+        Args:
+            label:   (String) Name of task to be added.
+            project: (String) Name of project to add task to.
+            section: (String) Name of section to add task to.
+        
+        Returns:
+            None
         """
         proj_tasks = self.data[project]['tasks']
         if label in proj_tasks.values():
-            sys.exit(f'task "{label}" already exists in project "{project}"')
+            sys.exit(f'task "{label}" already exists in project "{project}".')
 
         # add task
         proj_tasks[len(proj_tasks) + 1] = label
-        self.write()
 
         # update section if a section task is added
         if section:
@@ -591,7 +595,10 @@ class Todo(object):
     def task_delete(self):
         """Delete a task from a project."""
         position = self.args.task_delete
-        if position > len(self.proj_tasks):
+
+        if not position:
+            sys.exit('0 is an invalid task number.')
+        elif position > len(self.proj_tasks):
             sys.exit(f'project "{self.project}" has no task #{position}.')
         else:
             # delete task
@@ -627,7 +634,7 @@ class Todo(object):
                     new_tasks[old_index] = task
             self.data[self.project]['tasks'] = new_tasks
 
-            self.write()
+            # self.write()
 
     def check(self):
         """Mark a task as checked."""
@@ -754,14 +761,14 @@ class Todo(object):
                     self.data[self.project]['check'][i] = tnum
 
         # update sections
-        all_sect_tasks, new_tnames = self.get_updated_sections(
+        all_sections, new_tnames = self.get_updated_sections(
                                        self.data[self.project],
                                        self.data[self.project]['sections'],
                                        self.proj_tasks,
                                        self.data[self.project]['tasks'],
                                        set(self.data[self.project]['check']))
         for sect in self.data[self.project]['sections']:
-            sect['tasks'] = all_sect_tasks.get(sect['name'])
+            sect['tasks'] = all_sections.get(sect['name'])
         
         self.write()
 
@@ -1104,7 +1111,7 @@ def check_if_todo_repo(todo_file):
     Any other `todo` command in a non-todo repository will exit with an error.
 
     Args:
-        todo_file (String): The absolute path of the .todo configuration file.
+        todo_file: (String) Absolute path of the .todo configuration file.
 
     Returns:
         None
@@ -1125,19 +1132,20 @@ def main(todo_file):
 
     menu = wrapper(Menu)
     parser = create_parser(menu, todo_file)
-
     todo = Todo(menu, parser, todo_file)
 
+    # Non-normal modes
     if parser.create:
         todo.create()
     elif parser.delete:
         todo.delete()
     elif parser.archive:
         todo.archive()
+    # Normal mode
     else:
         if parser.add:
             todo.add(parser.add, parser.project, parser.section)
-        elif parser.task_delete:
+        elif parser.task_delete or parser.task_delete == 0:
             todo.task_delete()
         elif parser.check:
             todo.check()
