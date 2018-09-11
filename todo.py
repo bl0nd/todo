@@ -662,45 +662,58 @@ class Todo(object):
         self.write()
 
     def move_task(self):
+        """Move a task to a different project or section.
+
+        'ttm' is short for "task to move."
+
+        If no section is specified (-mp), 'ttm' is a list of the format:
+            [label, project]
+
+        If a section is specified (-ms), 'ttm' is a list of the format:
+            [label, project, section]
+        """
         ttm = self.args.move_to_proj if self.args.move_to_proj else self.args.move_to_sect
         ttm_pos = len(self.proj_tasks)
         new_tasks = {}
 
-        # project check
+        # Project check
         if ttm[1] not in [project for project in self.data.keys()]:
             sys.exit(f'error: project "{ttm[1]}" does not exist.')
 
-        # section check
+        # Section check
         existing_sects = [sect['name'] for sect in self.data[ttm[1]]['sections']]
         if self.args.move_to_sect and ttm[2] not in existing_sects:
             sys.exit(f'error: section "{ttm[2]}" does not exist in project "{ttm[1]}".')
-        
-        # find task
+
+        # Update task list
+        #   whether or not you're moving to a different project or a different
+        #     section within the same project, this will remove the task and
+        #     append it to the updated task list.
         for pos, task in self.proj_tasks.items():
             if task == ttm[0]:
                 ttm_pos = pos
-            else:
-                new_pos = int(pos) if int(pos) < int(ttm_pos) else int(pos)-1
+            else:  
+                new_pos = int(pos) if int(pos) < int(ttm_pos) else int(pos) - 1
                 new_tasks[new_pos] = task
         self.data[self.project]['tasks'] = new_tasks
         self.proj_tasks.pop(ttm_pos)
 
-        # update check
+        # Update check
         if int(ttm_pos) in self.data[self.project]['check']:
             self.data[self.project]['check'].remove(int(ttm_pos))
-        for i,v in enumerate(self.data[self.project]['check']):
-            self.data[self.project]['check'][i] = v if v < int(ttm_pos) else v-1
+        for i, task_num in enumerate(self.data[self.project]['check']):
+            self.data[self.project]['check'][i] = task_num if task_num < int(ttm_pos) else task_num - 1
 
-        # update sections
-        for i,sect in enumerate(self.proj_sections):
+        # Update sections
+        for i, sect in enumerate(self.proj_sections):
             new_sects = []
             for task_num in sect['tasks']:
                 if int(ttm_pos) > task_num:
                     new_sects.append(task_num)
                 elif int(ttm_pos) < task_num:
-                    new_sects.append(task_num-1)
+                    new_sects.append(task_num - 1)
             self.proj_sections[i]['tasks'] = new_sects
-
+    
         # Add (writes to file there)
         if self.args.move_to_proj:
             self.add(ttm[0], ttm[1])
