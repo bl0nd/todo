@@ -81,17 +81,15 @@ class ArgumentParser(argparse.ArgumentParser):
         error_msg_left = message.split(':')[0]
         error_msg_right = message.split(':')[1]
 
-        # Check for nonexistent project names (normal)
         if error_msg_left == 'invalid choice':
+            # Check for nonexistent project names (normal)
             sys.exit(f'project "{sys.argv[1]}" does not exist.')
-
-        # Check for missing arguments (normal, create, delete)
         elif (error_msg_left == 'the following arguments are required' or
               error_msg_right == ' expected one argument'):
+            # Check for missing arguments (normal, create, delete)
             sys.exit(message) 
-        
-        # Check for extra arguments (normal, create, delete, archive)
         elif error_msg_left == 'unrecognized arguments':
+            # Check for extra arguments (normal, create, delete, archive)
             extra_args = error_msg_right.split(' ')[1:]
             suffix = '' if len(extra_args) == 1 else 's'
             if len(extra_args) == 1:
@@ -99,12 +97,11 @@ class ArgumentParser(argparse.ArgumentParser):
             else:
                 extra_args = "'{}'".format("', '".join(extra_args))
             sys.exit(f'error: unrecognized argument{suffix} {extra_args}.')
-        
-        # Check for too many arguments (it'll think you're providing a section)
         elif error_msg_left == 'argument section':
-            sys.exit('error: too many arguments')
+            # Check for too many arguments (it'll think you're providing a section)
+            sys.exit('error: too many arguments.')
         else:
-            sys.exit(f'UNKNOWN ERROR: {message}')
+            sys.exit(f'UNKNOWN ERROR: {message}.')
 
     def print_help(self):
         """Print custom help menu."""
@@ -264,20 +261,23 @@ class Todo(object):
     def nonexistent_check(self):
         """Check for nonexistent project and section names.
 
-        Nonexistent project names in normal mode have to be handled at the
-        parser, otherwise our subparsers mess up.
+        Nonexistent project names in Normal mode have to be handled at the
+          parser, otherwise our subparsers mess up. Note that this does NOT
+          include moving tasks (which is in Normal mode).
+
+        Nonexistent project names in Delete mode are handled in todo.delete().
 
         Helper:
             todo.__init__()
         """
-        if self.project not in self.data.keys() and not self.args.create:
-            # Check project name (delete mode)
-            sys.exit(f'project "{self.project}" does not exist.')
+        if self.project not in self.data.keys():
+            # Check project name (archive mode)
+            sys.exit(f'error: project "{self.project}" does not exist.')
         elif self.section:
-            # Check section name (normal, delete, archive mode)
+            # Check section name (normal, archive mode)
             proj_sections = [sect['name'] for sect in self.data[self.project]['sections']]
             if self.section not in proj_sections:
-                sys.exit(f'section "{self.section}" does not exist in project "{self.project}".')
+                sys.exit(f'error: section "{self.section}" does not exist in project "{self.project}".')
 
     def find_project(self):
         """Return the sections and tasks of a project.
@@ -290,7 +290,7 @@ class Todo(object):
 
         Returns:
             A tuple made of the specified project's sections in a list and tasks
-            in a dict.
+              in a dict.
         """
         sections = []
         tasks = []
@@ -300,9 +300,9 @@ class Todo(object):
                 sections.append(list(self.iter_data[i][1]['sections']))
                 tasks.append(list(self.iter_data[i][1]['tasks'].items()))
 
-        # If we're not archiving and there are completed tasks,
-        # or if we are archiving, but a section is specified.
         if tasks and not self.args.archive or (self.args.archive and self.args.section):
+            # If we're not archiving and there are completed tasks,
+            #   or if we are archiving, but a section is specified.
             return (*sections, dict(*tasks))
         else:
             return (None, None)
@@ -321,13 +321,13 @@ class Todo(object):
         existing_projects = [project for project in self.data.keys()]
 
         if not project_name.isalnum():
-            sys.exit('invalid project name.')
+            sys.exit('error: invalid project name.')
         elif project_name in blacklist:
             sys.exit('error: restricted project name.')
         elif project_name in existing_projects:
-            sys.exit(f'project "{project_name}" already exists.')
+            sys.exit(f'error: project "{project_name}" already exists.')
         elif len(project_name) > 45:
-            sys.exit('project name is too long.')
+            sys.exit('error: project name is too long.')
 
     # These archive helper functions do not modify self.data, self.proj_sections, or
     #   self.proj_tasks in any way. This is due to differences in check list
@@ -472,7 +472,10 @@ class Todo(object):
 
     def delete(self):
         """Delete a project."""
-        self.data.pop(self.project)
+        try:
+            self.data.pop(self.project)
+        except KeyError as e:
+            sys.exit(f'error: project "{self.project}" does not exist.')
         self.write()
 
     def archive(self):
@@ -665,12 +668,12 @@ class Todo(object):
 
         # project check
         if ttm[1] not in [project for project in self.data.keys()]:
-            sys.exit(f'error: project "{ttm[1]}" does not exist')
+            sys.exit(f'error: project "{ttm[1]}" does not exist.')
 
         # section check
         existing_sects = [sect['name'] for sect in self.data[ttm[1]]['sections']]
         if self.args.move_to_sect and ttm[2] not in existing_sects:
-            sys.exit(f'error: section "{ttm[2]}" does not exist in project "{ttm[1]}"')
+            sys.exit(f'error: section "{ttm[2]}" does not exist in project "{ttm[1]}".')
         
         # find task
         for pos, task in self.proj_tasks.items():
