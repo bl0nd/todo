@@ -585,7 +585,7 @@ class Todo(object):
         # add task
         proj_tasks[len(proj_tasks) + 1] = label
 
-        # update section if a section task is added
+        # update sections
         if section:
             for sect in self.data[project]['sections']:
                 if section == sect.get('name'):
@@ -604,27 +604,28 @@ class Todo(object):
             # delete task
             self.proj_tasks.pop(str(position))
 
-            # update section pointers
-            section_tasks = []
+            # update sections
+            all_section_tasks = []
             for section in self.proj_sections:
-                section_tasks.append(section.get('tasks'))
+                all_section_tasks.append(section.get('tasks'))
 
-            for sect_tasks in section_tasks:
-                if position in sect_tasks:
-                    sect_tasks.remove(position)
-                for i,v in enumerate(sect_tasks):
-                    if v > position:
-                        sect_tasks[i] = v - 1
+            for section_tasks in all_section_tasks:
+                if position in section_tasks:
+                    section_tasks.remove(position)
+                for i, task_num in enumerate(section_tasks):
+                    if task_num > position:
+                        section_tasks[i] = task_num - 1
 
             # update check list
             if position in self.data[self.project]['check']:
                 self.data[self.project]['check'].remove(position)
 
-            for i,v in enumerate(self.data[self.project]['check']):
-                if v > position:
-                    self.data[self.project]['check'][i] = v - 1
+            for i, task_num in enumerate(self.data[self.project]['check']):
+                # update remaining check task position numbers
+                if task_num > position:
+                    self.data[self.project]['check'][i] = task_num - 1
 
-            # update task list indices
+            # update task list position numbers
             new_tasks = {}
             for old_index, task in self.proj_tasks.items():
                 if position <= int(old_index):
@@ -634,41 +635,32 @@ class Todo(object):
                     new_tasks[old_index] = task
             self.data[self.project]['tasks'] = new_tasks
 
-            # self.write()
+            self.write()
 
-    def check(self):
-        """Mark a task as checked."""
-        label = self.args.check
+    def check_uncheck(self, check):
+        """Mark a task as checked or unchecked."""
+        label = self.args.check if check else self.args.uncheck
         check_list = self.data[self.project]['check']
         task_list = list(self.proj_tasks.values())
 
+        # spaghetti
         if label in task_list:
             for task_num, task in self.proj_tasks.items():
                 if label == task:
-                    if int(task_num) not in check_list:
-                        check_list.append(int(task_num))
-                        self.write()
+                    if check:
+                        if int(task_num) not in check_list:
+                            check_list.append(int(task_num))
+                        else:
+                            sys.exit(f'task "{label}" is already checked.')
                     else:
-                        sys.exit(f'task "{label}" is already checked.')
+                        if int(task_num) in check_list:
+                            check_list.remove(int(task_num))
+                        else:
+                            sys.exit(f'task "{label}" is not checked.')
         else:
             sys.exit(f'task "{label}" does not exist.')
 
-    def uncheck(self):
-        """Unmark a checked task."""
-        label = self.args.uncheck
-        check_list = self.data[self.project]['check']
-        task_list = list(self.proj_tasks.values())
-
-        if label in task_list:
-            for task_num, task in self.proj_tasks.items():
-                if label == task:
-                    if int(task_num) in check_list:
-                        check_list.remove(int(task_num))
-                        self.write()
-                    else:
-                        sys.exit(f'task "{label}" is not checked.')
-        else:
-            sys.exit(f'task "{label}" does not exist.')
+        self.write()
 
     def move_task(self):
         ttm = self.args.move_to_proj if self.args.move_to_proj else self.args.move_to_sect
@@ -1147,10 +1139,9 @@ def main(todo_file):
             todo.add(parser.add, parser.project, parser.section)
         elif parser.task_delete or parser.task_delete == 0:
             todo.task_delete()
-        elif parser.check:
-            todo.check()
-        elif parser.uncheck:
-            todo.uncheck()
+        elif parser.check or parser.uncheck:
+            check = True if parser.check else False
+            todo.check_uncheck(check)
         elif parser.move_to_proj or parser.move_to_sect:
             todo.move_task()
         elif parser.section_add:
