@@ -317,9 +317,6 @@ class Todo(object):
 
         Args:
             project_name: (String) Either self.project or self.args.rename.
-        
-        Returns:
-            None
         """
         blacklist = ['archive', 'create', 'delete', 'init']
         existing_projects = [project for project in self.data.keys()]
@@ -527,9 +524,6 @@ class Todo(object):
 
         Args:
             project: (dict) A project's sections, tasks, and check list.
-        
-        Returns:
-            None
         """
         # Empty check list
         checked = self.get_updated_check(project)
@@ -574,9 +568,6 @@ class Todo(object):
             label:   (String) Name of task to be added.
             project: (String) Name of project to add task to.
             section: (String) Name of section to add task to.
-        
-        Returns:
-            None
         """
         proj_tasks = self.data[project]['tasks']
         if label in proj_tasks.values():
@@ -584,6 +575,7 @@ class Todo(object):
 
         # add task
         proj_tasks[len(proj_tasks) + 1] = label
+        self.write()
 
         # update sections
         if section:
@@ -638,12 +630,17 @@ class Todo(object):
             self.write()
 
     def check_uncheck(self, check):
-        """Mark a task as checked or unchecked."""
+        """Mark a task as checked or unchecked.
+
+        Args:
+            check: (boolean) Indicates whether to check (True) or uncheck
+                               (False) a task.
+
+        """
         label = self.args.check if check else self.args.uncheck
         check_list = self.data[self.project]['check']
         task_list = list(self.proj_tasks.values())
 
-        # spaghetti
         if label in task_list:
             for task_num, task in self.proj_tasks.items():
                 if label == task:
@@ -711,9 +708,14 @@ class Todo(object):
     # >>> Section functions
 
     def section_add(self):
-        """Add a section."""
+        """Add a section.
+
+        In this function, 'self.proj_tasks' basically means old tasks, while
+          'self.data[self.project]['tasks']' means the current, new tasks.'
+        """
         label = self.args.section_add
-        if label in [sect.get('name') for sect in self.proj_sections]:
+        section_names = [sect.get('name') for sect in self.proj_sections]
+        if label in section_names:
             sys.exit(f'section "{label}" already exists in project "{self.project}".')
 
         sections = self.data[self.project]['sections']
@@ -724,7 +726,8 @@ class Todo(object):
         """Delete a section."""
         label = self.args.section_delete
 
-        if label not in [sect.get('name') for sect in self.proj_sections]:
+        section_names = [sect.get('name') for sect in self.proj_sections]
+        if label not in section_names:
             sys.exit(f'section "{label}" does not exist in project "{self.project}".')
 
         sections = self.data[self.project]['sections']
@@ -732,7 +735,7 @@ class Todo(object):
 
         # delete section and section tasks
         for i, sect in enumerate(sections):
-            if label == sect.get('name'):
+            if sect.get('name') == label:
                 del sections[i]
                 for task in sect.get('tasks'):
                     self.proj_tasks.pop(str(task))
@@ -740,17 +743,15 @@ class Todo(object):
 
         # update task indices
         new_tasks = {}
-        for i,task_num in enumerate(self.proj_tasks.keys()):
-            if len(self.proj_tasks.keys()) > i:
-                new_tasks[str(i+1)] = self.proj_tasks.get(task_num)
+        for i, task_num in enumerate(self.proj_tasks.keys()):
+            new_tasks[str(i+1)] = self.proj_tasks.get(task_num)
         self.data[self.project]['tasks'] = new_tasks
 
         # update check list
-        for i, task_num in enumerate(self.data[self.project]['check']):
-            task = self.proj_tasks[str(task_num)]
-            for tnum, t in self.data[self.project]['tasks'].items():
-                if t == task:
-                    self.data[self.project]['check'][i] = tnum
+        for i, old_task_num in enumerate(self.data[self.project]['check']):
+            for new_task_num, task in self.data[self.project]['tasks'].items():
+                if task == self.proj_tasks[str(old_task_num)]:
+                    self.data[self.project]['check'][i] = int(new_task_num)
 
         # update sections
         all_sections, new_tnames = self.get_updated_sections(
@@ -759,8 +760,8 @@ class Todo(object):
                                        self.proj_tasks,
                                        self.data[self.project]['tasks'],
                                        set(self.data[self.project]['check']))
-        for sect in self.data[self.project]['sections']:
-            sect['tasks'] = all_sections.get(sect['name'])
+        for section in self.data[self.project]['sections']:
+            section['tasks'] = all_sections.get(section['name'])
         
         self.write()
 
@@ -1104,9 +1105,6 @@ def check_if_todo_repo(todo_file):
 
     Args:
         todo_file: (String) Absolute path of the .todo configuration file.
-
-    Returns:
-        None
     """
     todo_dir = todo_file.split("/.todo")[0]
     if len(sys.argv) == 2 and sys.argv[1] == 'init':
@@ -1124,6 +1122,7 @@ def main(todo_file):
 
     menu = wrapper(Menu)
     parser = create_parser(menu, todo_file)
+    print(parser)
     todo = Todo(menu, parser, todo_file)
 
     # Non-normal modes
