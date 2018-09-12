@@ -66,7 +66,6 @@ from curses import wrapper, newwin
                    Parser
 [+++++++++++++++++++++++++++++++++++++++++++++]
 """
-
 class ArgumentParser(argparse.ArgumentParser):
     """Overriding class for custom help/usage message."""
     def error(self, message):
@@ -74,9 +73,6 @@ class ArgumentParser(argparse.ArgumentParser):
 
         Args:
             message: (String) The default argparse error message raised.
-        
-        Returns:
-            None
         """
         error_msg_left = message.split(':')[0]
         error_msg_right = message.split(':')[1]
@@ -373,8 +369,8 @@ class Todo(object):
             checked: (set)  Completed tasks to delete.
         
         Returns:
-            old_tasks: (list) All pre-existing tasks. (Used to map new tasks
-                                with old index positions)
+            old_tasks: (list) All pre-existing tasks. (to map new tasks with
+                                old task positions)
             new_tasks: (dict) All tasks post-archive (as value) and their
                                 position (as key).
             """
@@ -404,9 +400,9 @@ class Todo(object):
         
         Returns:
             all_sections: (dict) Each section (name as key) and its unchecked
-                                     tasks (as values) after archiving.
-            new_tnames:     (list) All task names after archiving. (for updating
-                                     remaining check list values)
+                                   tasks (as values) after archiving.
+            new_tnames:   (list) All task names after archiving. (for updating
+                                   remaining check list values)
         """
         new_tnames = list(new_tasks.values())
         all_sections = {}
@@ -456,11 +452,11 @@ class Todo(object):
         """
         if self.project or self.section:
             wrapper(self.menu.draw_prjsect,
-                self.data,
-                self.proj_sections,
-                self.proj_tasks,
-                self.project,
-                self.section)
+                    self.data,
+                    self.proj_sections,
+                    self.proj_tasks,
+                    self.project,
+                    self.section)
         else:
             wrapper(self.menu.draw_all, self.data, self.iter_data)
     
@@ -820,23 +816,24 @@ class Menu(object):
 
         # Colors
         self.init_colors()
-        self.colors = {"r": (1, 2, 3, 4, 5, 6, 7, 8),
-                       "g": (9, 10, 11, 12, 13, 14, 15, 16),
-                       "b": (17, 18, 19, 20, 21, 22, 23, 24),
-                       "v": (25, 26, 27, 28, 29, 30, 31, 32)}
+        self.colors = {"r": (1, 2, 3, 4, 5, 6, 7, 8, 9),
+                       "g": (10, 11, 12, 13, 14, 15, 16, 17, 18),
+                       "b": (19, 20, 21, 22, 23, 24, 25, 26, 27),
+                       "v": (28, 29, 30, 31, 32, 33, 34, 35, 36)}
 
         # Prefixes
-        self.hash   = '     # '
-        self.check  = '     ✓ '
-        self.utask  = '     □ '
-        self.blank  = '{}\n'.format(' ' * 56)
+        self.task_index = 1
+        self.hash   = '  # '
+        self.check  = '  ✓ '
+        self.utask  = '  □ '
+        self.blank  = '{}\n'.format(' ' * 58)
 
     def init_colors(self):
         """Initialize custom curses color pairs.
 
         Color pair mapping:
 
-            Let x = {1, 9, 17},
+            Let x = {1, 10, 19, 28},
 
                 x:        ! and double quotes ("")
                 x + 1:    Color letter (e.g., r, g, b)
@@ -846,6 +843,7 @@ class Menu(object):
                 x + 5:    Hash
                 x + 6:    Section name
                 x + 7:    Checkmark
+                x + 8:    Index
         """
         curses.use_default_colors()
 
@@ -858,36 +856,40 @@ class Menu(object):
         curses.init_pair(6, 203, 131)
         curses.init_pair(7, 210, 131)
         curses.init_pair(8, 46, 131)
+        curses.init_pair(9, 180, 131)
 
         # Green
-        curses.init_pair(9, 76, 71)
-        curses.init_pair(10, 119, 71)
-        curses.init_pair(11, 253, 71)
-        curses.init_pair(12, -1, 65)
-        curses.init_pair(13, 253, 65)
-        curses.init_pair(14, 76, 65)
-        curses.init_pair(15, 210, 65)
-        curses.init_pair(16, 46, 65)
+        curses.init_pair(10, 76, 71)
+        curses.init_pair(11, 119, 71)
+        curses.init_pair(12, 253, 71)
+        curses.init_pair(13, -1, 65)
+        curses.init_pair(14, 253, 65)
+        curses.init_pair(15, 76, 65)
+        curses.init_pair(16, 210, 65)
+        curses.init_pair(17, 46, 65)
+        curses.init_pair(18, 180, 65)
 
         # Blue
-        curses.init_pair(17, 75, 69)
-        curses.init_pair(18, 45, 69)
-        curses.init_pair(19, 253, 69)
-        curses.init_pair(20, -1, 67)
-        curses.init_pair(21, 253, 67)
-        curses.init_pair(22, 75, 67)
-        curses.init_pair(23, 210, 67)
-        curses.init_pair(24, 46, 67)
+        curses.init_pair(19, 75, 69)
+        curses.init_pair(20, 45, 69)
+        curses.init_pair(21, 253, 69)
+        curses.init_pair(22, -1, 67)
+        curses.init_pair(23, 253, 67)
+        curses.init_pair(24, 75, 67)
+        curses.init_pair(25, 210, 67)
+        curses.init_pair(26, 46, 67)
+        curses.init_pair(27, 180, 67)
 
         # Violet
-        curses.init_pair(25, 171, 141)
-        curses.init_pair(26, 219, 141)
-        curses.init_pair(27, 253, 141)
-        curses.init_pair(28, -1, 97)
-        curses.init_pair(29, 253, 97)
-        curses.init_pair(30, 171, 97)
-        curses.init_pair(31, 210, 97)
-        curses.init_pair(32, 46, 97)
+        curses.init_pair(28, 171, 141)
+        curses.init_pair(29, 219, 141)
+        curses.init_pair(30, 253, 141)
+        curses.init_pair(31, -1, 97)
+        curses.init_pair(32, 253, 97)
+        curses.init_pair(33, 171, 97)
+        curses.init_pair(34, 210, 97)
+        curses.init_pair(35, 46, 97)
+        curses.init_pair(36, 180, 97)
 
     def draw_banner(self, stdscr, clrs, proj_color, proj_name, end_banner):
         """Draw the TODO project's banner.
@@ -905,17 +907,18 @@ class Menu(object):
         """
         end_banner = '"{}\n'.format(' ' * (56 - len(proj_name) - 9))
         self.win.addstr(' !!! ', curses.color_pair(clrs[0]))
-        self.win.addstr(f'{proj_color} ', curses.A_BOLD | curses.color_pair(clrs[1]))
+        self.win.addstr(f'{proj_color}   ', curses.A_BOLD | curses.color_pair(clrs[1]))
         self.win.addstr('"', curses.color_pair(clrs[0]))
         self.win.addstr(proj_name, curses.A_BOLD | curses.color_pair(clrs[2]))
         self.win.addstr(end_banner, curses.color_pair(clrs[0]))
 
-    def draw_tasks(self, stdscr, task_num, tname, check_list, clrs, section=False):
+    def draw_tasks(self, stdscr, tasks, task_num, tname, check_list, clrs, section=False):
         """Draw regular and section tasks.
 
         Args:
             stdscr:     (Window)  Represents the entire screen.
-            task_num:   (int)     The current task's index.
+            tasks:      (list)    The current project's tasks.
+            task_num:   (int).    The task's index.
             tname:      (String)  Name of task.
             check_list: (list)    Contains task numbers that are checked.
             clrs:       (tuple)   8 sequential numbers that correspond to the
@@ -923,32 +926,43 @@ class Menu(object):
             section:    (boolean) Indicates whether the current task is a
                                     regular or section task.
         """
-        # The suffix assignments here are strictly for tasks with less than
-        # 'length' chars.
+        tindex = f'  {task_num}'
         length = 42 if section else 44
-        prefix = '  ' if section else ''
-        tname_length = ' ' * (56 - len(tname) - (len(prefix) + 7))
-        suffix = f'{tname_length}\n'
+        prefix = ' ' * (7 - len(str(tindex))) if section else ' ' * (5 - len(str(tindex)))
+        # The suffix assignments here are strictly for tasks with less than
+        #   'length' chars.
+        if task_num < 10:
+            suffix = f'{" " * (56 - len(tname) - (len(prefix) + 5))}\n'
+        else:
+            suffix = f'{" " * (56 - len(tname) - (len(prefix) + 6))}\n'
 
         if len(tname) > length:
             for line, substr in enumerate(textwrap.wrap(tname, width=length)):
-                substr_length = ' ' * (56 - len(substr) - (len(prefix) + 7))
-                suffix = f'{substr_length}\n'
+                if task_num < 10:
+                    suffix = f'{" " * (56 - len(substr) - (len(prefix) + 5))}\n'
+                else:
+                    suffix = f'{" " * (56 - len(substr) - (len(prefix) + 6))}\n'
 
                 if line == 0:
                     if task_num in check_list:
+                        self.win.addstr(f'{tindex}', curses.color_pair(clrs[8]))
                         self.win.addstr(f'{prefix}{self.check}', curses.color_pair(clrs[7]))
                         self.win.addstr(f'{substr}{suffix}', curses.color_pair(clrs[4]))
                     else:
+                        self.win.addstr(f'{tindex}', curses.color_pair(clrs[8]))
                         self.win.addstr(f'{prefix}{self.utask}{substr}{suffix}', curses.color_pair(clrs[4]))
                 else:
                     self.win.addstr(f'{prefix}       {substr}{suffix}', curses.color_pair(clrs[4]))
         else:
             if task_num in check_list:
+                self.win.addstr(f'{tindex}', curses.color_pair(clrs[8]))
                 self.win.addstr(f'{prefix}{self.check}', curses.color_pair(clrs[7]))
                 self.win.addstr(f'{tname}{suffix}', curses.color_pair(clrs[4]))
             else:
+                self.win.addstr(f'{tindex}', curses.color_pair(clrs[8]))
                 self.win.addstr(f'{prefix}{self.utask}{tname}{suffix}', curses.color_pair(clrs[4]))
+
+        self.task_index += 1
 
     def draw_sections(self, stdscr, check_list, clrs, proj_tasks, sect):
         """Draw sections.
@@ -963,15 +977,15 @@ class Menu(object):
             sect:       (dict)   Name and tasks for the current section.
         """
         # Section
-        end_sec = '{}\n'.format(' ' * (56 - len(sect.get('name')) - 7))
-        self.win.addstr(self.hash, curses.color_pair(clrs[5]))
+        end_sec = '{}\n'.format(' ' * (56 - len(sect.get('name')) - 9))
+        self.win.addstr(f'{" " * 6} {self.hash}', curses.color_pair(clrs[5]))
         self.win.addstr(f'{sect.get("name")}{end_sec}', curses.color_pair(clrs[6]))
 
         # Section tasks
         task_nums = sect.get('tasks')
         for task_num in task_nums:
             tname = proj_tasks.get(str(task_num))
-            wrapper(self.draw_tasks, task_num, tname, check_list, clrs, section=True)
+            wrapper(self.draw_tasks, list(proj_tasks.values()), task_num, tname, check_list, clrs, section=True)
         self.win.addstr(self.blank, curses.color_pair(clrs[3]))
 
     def draw_prjsect(self, stdscr, projects, proj_sections, proj_tasks, project, section):
@@ -1024,7 +1038,7 @@ class Menu(object):
             # tasks
             for task_num, tname in proj_tasks.items():
                 if task_num not in section_tasks:
-                    wrapper(self.draw_tasks, int(task_num), tname, check_list, clrs, section=False)
+                    wrapper(self.draw_tasks, list(proj_tasks.values()), int(task_num), tname, check_list, clrs, section=False)
 
             # end lines
             #   If there are regular tasks, we need to add 3 blank lines,
@@ -1055,6 +1069,8 @@ class Menu(object):
             proj_color = list(self.colors.keys())[i % len(self.colors)]
             clrs = self.colors.get(proj_color)
 
+            self.task_index = 1
+
             # Banner
             end_banner = '"{}\n'.format(' ' * (56 - len(proj_name) - 9))
             wrapper(self.draw_banner, clrs, proj_color, proj_name, end_banner)
@@ -1072,7 +1088,7 @@ class Menu(object):
                 self.win.addstr(self.blank, curses.color_pair(clrs[3]))
             for task_num, tname in proj_tasks.items():
                 if task_num not in section_tasks:
-                    wrapper(self.draw_tasks, int(task_num), tname, check_list, clrs, section=False)
+                    wrapper(self.draw_tasks, list(proj_tasks.values()), int(task_num), tname, check_list, clrs, section=False)
 
             #   end lines
             body_end = 3 if set(proj_tasks.keys()) - section_tasks else 1
@@ -1130,4 +1146,5 @@ def main(todo_file):
 
 if __name__ == '__main__':
     todo_dir = os.path.dirname(os.path.realpath(__file__))
-    main(todo_file=f'{todo_dir}/.todo')
+    todo_file = os.path.join(todo_dir, '.todo')
+    main(todo_file=todo_file)
