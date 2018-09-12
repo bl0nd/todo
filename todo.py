@@ -912,12 +912,11 @@ class Menu(object):
         self.win.addstr(proj_name, curses.A_BOLD | curses.color_pair(clrs[2]))
         self.win.addstr(end_banner, curses.color_pair(clrs[0]))
 
-    def draw_tasks(self, stdscr, tasks, task_num, tname, check_list, clrs, section=False):
+    def draw_tasks(self, stdscr, task_num, tname, check_list, clrs, section=False):
         """Draw regular and section tasks.
 
         Args:
             stdscr:     (Window)  Represents the entire screen.
-            tasks:      (list)    The current project's tasks.
             task_num:   (int).    The task's index.
             tname:      (String)  Name of task.
             check_list: (list)    Contains task numbers that are checked.
@@ -928,7 +927,7 @@ class Menu(object):
         """
         tindex = f'  {task_num}'
         length = 42 if section else 44
-        prefix = ' ' * (7 - len(str(tindex))) if section else ' ' * (5 - len(str(tindex)))
+        prefix = ' ' * (9 - len(str(tindex))) if section else ' ' * (7 - len(str(tindex)))
         # The suffix assignments here are strictly for tasks with less than
         #   'length' chars.
         if task_num < 10:
@@ -952,7 +951,8 @@ class Menu(object):
                         self.win.addstr(f'{tindex}', curses.color_pair(clrs[8]))
                         self.win.addstr(f'{prefix}{self.utask}{substr}{suffix}', curses.color_pair(clrs[4]))
                 else:
-                    self.win.addstr(f'{prefix}       {substr}{suffix}', curses.color_pair(clrs[4]))
+                    sub_space = ' ' * 7 if task_num < 10 else ' ' * 8
+                    self.win.addstr(f'{prefix}{sub_space}{substr}{suffix}', curses.color_pair(clrs[4]))
         else:
             if task_num in check_list:
                 self.win.addstr(f'{tindex}', curses.color_pair(clrs[8]))
@@ -985,7 +985,7 @@ class Menu(object):
         task_nums = sect.get('tasks')
         for task_num in task_nums:
             tname = proj_tasks.get(str(task_num))
-            wrapper(self.draw_tasks, list(proj_tasks.values()), task_num, tname, check_list, clrs, section=True)
+            wrapper(self.draw_tasks, task_num, tname, check_list, clrs, section=True)
         self.win.addstr(self.blank, curses.color_pair(clrs[3]))
 
     def draw_prjsect(self, stdscr, projects, proj_sections, proj_tasks, project, section):
@@ -1038,7 +1038,7 @@ class Menu(object):
             # tasks
             for task_num, tname in proj_tasks.items():
                 if task_num not in section_tasks:
-                    wrapper(self.draw_tasks, list(proj_tasks.values()), int(task_num), tname, check_list, clrs, section=False)
+                    wrapper(self.draw_tasks, int(task_num), tname, check_list, clrs, section=False)
 
             # end lines
             #   If there are regular tasks, we need to add 3 blank lines,
@@ -1088,7 +1088,7 @@ class Menu(object):
                 self.win.addstr(self.blank, curses.color_pair(clrs[3]))
             for task_num, tname in proj_tasks.items():
                 if task_num not in section_tasks:
-                    wrapper(self.draw_tasks, list(proj_tasks.values()), int(task_num), tname, check_list, clrs, section=False)
+                    wrapper(self.draw_tasks, int(task_num), tname, check_list, clrs, section=False)
 
             #   end lines
             body_end = 3 if set(proj_tasks.keys()) - section_tasks else 1
