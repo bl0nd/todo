@@ -5,6 +5,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 0.1.2 (2018-09-13)
+### Features
+ - Delete multiple tasks ([14a59b7](https://github.com/bl0nd/todo/commit/14a59b7))
+ - Check/uncheck multiple tasks ([bdc9816](https://github.com/bl0nd/todo/commit/bdc9816))
+ - Task numbers are shown on menu ([d013dca](https://github.com/bl0nd/todo/commit/d013dca))
+### Modifications
+ - Removed: init functionality (.todo is now included in repo) ([57c96ae](https://github.com/bl0nd/todo/commit/57c96ae))
+
+
 ## 0.1.1 (2018-09-06)
 ### Features
  - Project and section renaming ([965d39e](https://github.com/bl0nd/todo/commit/965d39e))
