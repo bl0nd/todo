@@ -168,7 +168,7 @@ def create_parser(menu, todo_file):
 
     section = sp_normal.add_mutually_exclusive_group()
     section.add_argument('section', nargs='?')
-    section.add_argument('-d', '--taskdelete', type=int, dest='task_delete')
+    section.add_argument('-d', '--taskdelete', type=int, nargs=argparse.REMAINDER, dest='task_delete')
     section.add_argument('-c', '--check', type=int, nargs=argparse.REMAINDER)
     section.add_argument('-u', '--uncheck', type=int, nargs=argparse.REMAINDER)
     section.add_argument('-mp', '--move_to_proj', nargs=2)
@@ -580,49 +580,59 @@ class Todo(object):
                     self.write()
 
     def task_delete(self):
-        """Delete a task from a project."""
-        position = self.args.task_delete
+        """Delete a task from a project.
 
-        if not position:
-            sys.exit('0 is an invalid task number.')
-        elif position > len(self.proj_tasks):
-            sys.exit(f'project "{self.project}" has no task #{position}.')
-        else:
-            # delete task
-            self.proj_tasks.pop(str(position))
+        Had to use self.data[self.project]['tasks'] instead of self.proj_tasks
+          because otherwise, we would be deleting the wrong things when we
+          looped back since we're not updating proj_tasks.
+        """
+        labels = list(sorted(self.args.task_delete))
 
-            # update sections
-            all_section_tasks = []
-            for section in self.proj_sections:
-                all_section_tasks.append(section.get('tasks'))
+        for i, label in enumerate(labels):
+            if i != 0:
+                labels[i] = label - len(labels[:i])
 
-            for section_tasks in all_section_tasks:
-                if position in section_tasks:
-                    section_tasks.remove(position)
-                for i, task_num in enumerate(section_tasks):
-                    if task_num > position:
-                        section_tasks[i] = task_num - 1
+        for label in labels:
+            if not label:
+                sys.exit('error: 0 is an invalid task number.')
+            elif label > len(self.proj_tasks):
+                sys.exit(f'project "{self.project}" has no task #{label}.')
+            else:
+                # delete task
+                self.data[self.project]['tasks'].pop(str(label))
 
-            # update check list
-            if position in self.data[self.project]['check']:
-                self.data[self.project]['check'].remove(position)
+                # update sections
+                all_section_tasks = []
+                for section in self.proj_sections:
+                    all_section_tasks.append(section.get('tasks'))
 
-            for i, task_num in enumerate(self.data[self.project]['check']):
-                # update remaining check task position numbers
-                if task_num > position:
-                    self.data[self.project]['check'][i] = task_num - 1
+                for section_tasks in all_section_tasks:
+                    if label in section_tasks:
+                        section_tasks.remove(label)
+                    for i, task_num in enumerate(section_tasks):
+                        if task_num > label:
+                            section_tasks[i] = task_num - 1
 
-            # update task list position numbers
-            new_tasks = {}
-            for old_index, task in self.proj_tasks.items():
-                if position <= int(old_index):
-                    new_index = str(int(old_index) - 1)
-                    new_tasks[new_index] = task
-                else:
-                    new_tasks[old_index] = task
-            self.data[self.project]['tasks'] = new_tasks
+                # update check list
+                if label in self.data[self.project]['check']:
+                    self.data[self.project]['check'].remove(label)
 
-            self.write()
+                for i, task_num in enumerate(self.data[self.project]['check']):
+                    # update remaining check task label numbers
+                    if task_num > label:
+                        self.data[self.project]['check'][i] = task_num - 1
+
+                # update task list label numbers
+                new_tasks = {}
+                for old_index, task in self.data[self.project]['tasks'].items():
+                    if label <= int(old_index):
+                        new_index = str(int(old_index) - 1)
+                        new_tasks[new_index] = task
+                    else:
+                        new_tasks[old_index] = task
+                self.data[self.project]['tasks'] = new_tasks
+
+        self.write()
 
     def check_uncheck(self, check):
         """Mark a task as checked or unchecked.
