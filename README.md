@@ -81,7 +81,7 @@ $ todo PROJECT [SECTION] -r "New Name"
 ### Creation
 Create projects.
 ```sh
-$ todo create Project1
+$ todo create "Project 1"
 ```
 - As of this release, project names may only contain alphanumerics and no spaces.
 
@@ -91,7 +91,7 @@ $ todo create Project1
 ### Deletion
 Delete projects.
 ```sh
-$ todo delete Project1
+$ todo delete "Project 1"
 ```
 
 
