@@ -1144,10 +1144,13 @@ def main(todo_file):
             try:
                 todo.show()
             except:
-                sys.exit('Error: Terminal window is not large enough.')
+                sys.exit('error: terminal window is not large enough.')
 
 
 if __name__ == '__main__':
     todo_dir = os.path.dirname(os.path.realpath(__file__))
     todo_file = os.path.join(todo_dir, '.todo')
-    main(todo_file=todo_file)
+    try:
+        main(todo_file=todo_file)
+    except KeyboardInterrupt as e:
+        sys.exit('keyboard interrupt: exiting')
