@@ -113,9 +113,10 @@ Modes:
 Normal mode options:
   general
     -r LABEL                        Rename a project or section.
+
   tasks
     -a LABEL                        Add a task.
-    -d LABEL                        Delete a task.
+    -d ID                           Delete a task.
     -c LABEL                        Mark a task as complete.
     -u LABEL                        Mark a task as incomplete.
     -mp LABEL PROJECT               Move a task to a different project.
@@ -168,8 +169,8 @@ def create_parser(menu, todo_file):
     section = sp_normal.add_mutually_exclusive_group()
     section.add_argument('section', nargs='?')
     section.add_argument('-d', '--taskdelete', type=int, dest='task_delete')
-    section.add_argument('-c', '--check')
-    section.add_argument('-u', '--uncheck')
+    section.add_argument('-c', '--check', type=int, nargs=argparse.REMAINDER)
+    section.add_argument('-u', '--uncheck', type=int, nargs=argparse.REMAINDER)
     section.add_argument('-mp', '--move_to_proj', nargs=2)
     section.add_argument('-ms', '--move_to_sect', nargs=3)
     section.add_argument('-sa', '--sectionadd', dest='section_add')
@@ -246,6 +247,8 @@ class Todo(object):
         if len(sys.argv) == 1:
             self.show()
         elif not args.create and not args.delete:
+            # For getting a project's sections and tasks, which modes Create
+            #   and Delete don't need.
             if self.project or self.section:
                 self.nonexistent_check()
             self.proj_sections, self.proj_tasks = self.find_project()
@@ -430,25 +433,19 @@ class Todo(object):
     def show(self):
         """Display TODO list.
 
-        Has 3 sections based on the arguments passed to todo:
+        There are 3 scenarios based on the arguments passed:
 
             a)   $ todo project section
             b)   $ todo project
             c)   $ todo
 
-        a) displays the project specified, the section specified and its tasks.
+        a) displays the section specified and its tasks.
         b) displays the project specified, all sections within it, and all
              tasks.
         c) displays all projects, their sections, and all of their tasks.
 
         Tasks belonging to a section will be excluded from the general task
-            output area since they're already included in the section task area.
-
-        Args:
-            None
-
-        Returns:
-            None
+          output area since they're already included in the section task area.
         """
         if self.project or self.section:
             wrapper(self.menu.draw_prjsect,
@@ -635,25 +632,24 @@ class Todo(object):
                                (False) a task.
 
         """
-        label = self.args.check if check else self.args.uncheck
+        labels = self.args.check if check else self.args.uncheck
         check_list = self.data[self.project]['check']
-        task_list = list(self.proj_tasks.values())
+        task_id_list = list(self.proj_tasks.keys())
 
-        if label in task_list:
-            for task_num, task in self.proj_tasks.items():
-                if label == task:
-                    if check:
-                        if int(task_num) not in check_list:
-                            check_list.append(int(task_num))
-                        else:
-                            sys.exit(f'task "{label}" is already checked.')
+        for label in labels:
+            if str(label) in task_id_list:
+                if check:
+                    if label not in check_list:
+                        check_list.append(label)
                     else:
-                        if int(task_num) in check_list:
-                            check_list.remove(int(task_num))
-                        else:
-                            sys.exit(f'task "{label}" is not checked.')
-        else:
-            sys.exit(f'task "{label}" does not exist.')
+                        sys.exit(f'task #{label} is already checked.')
+                else:
+                    if label in check_list:
+                        check_list.remove(label)
+                    else:
+                        sys.exit(f'task #{label} is not checked.')
+            else:
+                sys.exit(f'task #{label} does not exist.')
 
         self.write()
 
@@ -822,7 +818,6 @@ class Menu(object):
                        "v": (28, 29, 30, 31, 32, 33, 34, 35, 36)}
 
         # Prefixes
-        self.task_index = 1
         self.hash   = '  # '
         self.check  = '  ✓ '
         self.utask  = '  □ '
@@ -926,10 +921,12 @@ class Menu(object):
                                     regular or section task.
         """
         tindex = f'  {task_num}'
-        length = 42 if section else 44
-        prefix = ' ' * (9 - len(str(tindex))) if section else ' ' * (7 - len(str(tindex)))
-        # The suffix assignments here are strictly for tasks with less than
-        #   'length' chars.
+        # tindex = '    '
+        length = 42 if section else 44  # amount of characters a task line can be
+        # 'prefix' is the spacing after index but before □ or ✓. For substrings
+        #   longer than 'length', we have to manually add spaces ('sub_space')
+        #   since we're not drawing the index, which gives 3 or 4 spaces.
+        prefix = ' ' * (9 - len(tindex)) if section else ' ' * (7 - len(tindex))
         if task_num < 10:
             suffix = f'{" " * (56 - len(tname) - (len(prefix) + 5))}\n'
         else:
@@ -961,8 +958,6 @@ class Menu(object):
             else:
                 self.win.addstr(f'{tindex}', curses.color_pair(clrs[8]))
                 self.win.addstr(f'{prefix}{self.utask}{tname}{suffix}', curses.color_pair(clrs[4]))
-
-        self.task_index += 1
 
     def draw_sections(self, stdscr, check_list, clrs, proj_tasks, sect):
         """Draw sections.
@@ -1064,12 +1059,10 @@ class Menu(object):
             proj_sections = iter_projects[i][1]['sections']
             proj_tasks = iter_projects[i][1]['tasks']
             proj_name = iter_projects[i][0]
-            section_tasks = {str(num) for sect in proj_sections for num in sect.get('tasks')}
+            section_tasks = [str(num) for sect in proj_sections for num in sect.get('tasks')]
             check_list = projects.get(proj).get('check')
             proj_color = list(self.colors.keys())[i % len(self.colors)]
             clrs = self.colors.get(proj_color)
-
-            self.task_index = 1
 
             # Banner
             end_banner = '"{}\n'.format(' ' * (56 - len(proj_name) - 9))
@@ -1091,7 +1084,7 @@ class Menu(object):
                     wrapper(self.draw_tasks, int(task_num), tname, check_list, clrs, section=False)
 
             #   end lines
-            body_end = 3 if set(proj_tasks.keys()) - section_tasks else 1
+            body_end = 3 if set(proj_tasks.keys()) - set(section_tasks) else 1
             self.win.addstr(self.blank * body_end, curses.color_pair(clrs[3]))
 
             # Project spacing
