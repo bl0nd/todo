@@ -78,14 +78,11 @@ class ArgumentParser(argparse.ArgumentParser):
         error_msg_right = message.split(':')[1]
 
         if error_msg_left == 'invalid choice':
-            # Check for nonexistent project names (normal)
             sys.exit(f'project "{sys.argv[1]}" does not exist.')
         elif (error_msg_left == 'the following arguments are required' or
               error_msg_right == ' expected one argument'):
-            # Check for missing arguments (normal, create, delete)
             sys.exit(message) 
         elif error_msg_left == 'unrecognized arguments':
-            # Check for extra arguments (normal, create, delete, archive)
             extra_args = error_msg_right.split(' ')[1:]
             suffix = '' if len(extra_args) == 1 else 's'
             if len(extra_args) == 1:
@@ -94,7 +91,6 @@ class ArgumentParser(argparse.ArgumentParser):
                 extra_args = "'{}'".format("', '".join(extra_args))
             sys.exit(f'error: unrecognized argument{suffix} {extra_args}.')
         elif error_msg_left == 'argument section':
-            # Check for too many arguments (it'll think you're providing a section)
             sys.exit('error: too many arguments.')
         else:
             sys.exit(f'UNKNOWN ERROR: {message}.')
@@ -254,6 +250,17 @@ class Todo(object):
             self.proj_sections, self.proj_tasks = self.find_project()
             # self.proj_sections = self.data[self.project]['sections']
             self.proj_tasks = self.data[self.project]['tasks']
+
+    def __repr__(self):
+        """Return attributes.
+
+        If Todo is ran with Create or Delete mode, self.proj_sections and
+          self.proj_tasks won't exist and will therefore throw an error.
+          May want to fix that.
+        """
+        return (f'Todo({self.menu}, {self.args}, {self.todo_file}, '
+                f'{self.project}, {self.section}, {self.data}, {self.iter_data}'
+                f'{self.proj_sections}, {self.proj_tasks})')
 
     # Helper functions
 
