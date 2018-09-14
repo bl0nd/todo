@@ -116,9 +116,9 @@ Normal mode options:
 
   tasks
     -a LABEL                        Add a task.
-    -d ID                           Delete a task.
-    -c LABEL                        Mark a task as complete.
-    -u LABEL                        Mark a task as incomplete.
+    -d ID [ID ...]                  Delete tasks.
+    -c LABEL [LABEL ...]            Mark tasks as complete.
+    -u LABEL [LABEL ...]            Mark tasks as incomplete.
     -mp LABEL PROJECT               Move a task to a different project.
     -ms LABEL PROJECT SECTION       Move a task to a different section.
 
