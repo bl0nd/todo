@@ -840,6 +840,14 @@ class Menu(object):
         self.utask  = '  □ '
         self.blank  = '{}\n'.format(' ' * 58)
 
+    def __repr__(self):
+        """Return attributs.
+
+        We don't really need to return the prefixes do we?
+        """
+        return (f'Menu({self.begin_x}, {self.begin_y}, {self.height}, '
+                f'{self.width}, {self.win}, {self.colors})')
+
     def init_colors(self):
         """Initialize custom curses color pairs.
 
