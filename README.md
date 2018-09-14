@@ -21,6 +21,9 @@ As an optional step, it is recommended that you create an alias to the script wi
 alias todo='python3 /opt/todo/todo.py'
 ```
 
+Note: It is planned to have installation done through ```pip``` soon, so this aliasing step won't be necessary in the future.
+
+
 ## Usage
 Todo has 4 main modes:
 
