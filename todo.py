@@ -682,8 +682,12 @@ class Todo(object):
             [label, project, section]
         """
         ttm = self.args.move_to_proj if self.args.move_to_proj else self.args.move_to_sect
-        ttm_pos = len(self.proj_tasks)
+        moved_proj_tasks = self.data[ttm[1]]['tasks'].values()
         new_tasks = {}
+
+        # Nonexistenet task check
+        if ttm[0] not in self.proj_tasks.keys():
+            sys.exit(f'error: task #{ttm[0]} does not exist in project "{self.project}".')
 
         # Project check
         if ttm[1] not in [project for project in self.data.keys()]:
@@ -691,43 +695,56 @@ class Todo(object):
 
         # Section check
         existing_sects = [sect['name'] for sect in self.data[ttm[1]]['sections']]
-        if self.args.move_to_sect and ttm[2] not in existing_sects:
-            sys.exit(f'error: section "{ttm[2]}" does not exist in project "{ttm[1]}".')
+        if self.args.move_to_sect:
+            if ttm[2] not in existing_sects:
+                sys.exit(f'error: section "{ttm[2]}" does not exist in project "{ttm[1]}".')
 
-        # Update task list
-        #   whether or not you're moving to a different project or a different
-        #     section within the same project, this will remove the task and
-        #     append it to the updated task list.
+        # Task exists check
+        if self.args.move_to_proj:
+            if self.proj_tasks[ttm[0]] in moved_proj_tasks:
+                sys.exit(f'error: task #{ttm[0]} already exists in project "{ttm[1]}".')
+        else:
+            for sect in self.data[ttm[1]]['sections']:
+                # moving to a section in the same project or
+                # moving to a different section in a different project
+                if (
+                        (
+                            sect['name'] == ttm[2] and
+                            ttm[1] == self.project and
+                            self.proj_tasks[ttm[0]] in moved_proj_tasks
+                        )
+                    or self.proj_tasks[ttm[0]] in moved_proj_tasks
+                   ):
+                    sys.exit(f'error: task #{ttm[0]} already exists project "{ttm[1]}".')
+                    
+        # Remove task
         for pos, task in self.proj_tasks.items():
-            if task == ttm[0]:
-                ttm_pos = pos
-            else:  
-                new_pos = int(pos) if int(pos) < int(ttm_pos) else int(pos) - 1
+            if task != self.proj_tasks[ttm[0]]:
+                new_pos = int(pos) if int(pos) < int(ttm[0]) else int(pos) - 1
                 new_tasks[new_pos] = task
         self.data[self.project]['tasks'] = new_tasks
-        self.proj_tasks.pop(ttm_pos)
 
         # Update check
-        if int(ttm_pos) in self.data[self.project]['check']:
-            self.data[self.project]['check'].remove(int(ttm_pos))
+        if int(ttm[0]) in self.data[self.project]['check']:
+            self.data[self.project]['check'].remove(int(ttm[0]))
         for i, task_num in enumerate(self.data[self.project]['check']):
-            self.data[self.project]['check'][i] = task_num if task_num < int(ttm_pos) else task_num - 1
+            self.data[self.project]['check'][i] = task_num if task_num < int(ttm[0]) else task_num - 1
 
         # Update sections
         for i, sect in enumerate(self.proj_sections):
             new_sects = []
             for task_num in sect['tasks']:
-                if int(ttm_pos) > task_num:
+                if int(ttm[0]) > task_num:
                     new_sects.append(task_num)
-                elif int(ttm_pos) < task_num:
+                elif int(ttm[0]) < task_num:
                     new_sects.append(task_num - 1)
             self.proj_sections[i]['tasks'] = new_sects
-    
+        
         # Add (writes to file there)
         if self.args.move_to_proj:
-            self.add(ttm[0], ttm[1])
+            self.add(self.proj_tasks.get(ttm[0]), ttm[1])
         else:
-            self.add(ttm[0], ttm[1], ttm[2])
+            self.add(self.proj_tasks.get(ttm[0]), ttm[1], ttm[2])
 
     # >>> Section functions
 
