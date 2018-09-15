@@ -682,10 +682,9 @@ class Todo(object):
             [label, project, section]
         """
         ttm = self.args.move_to_proj if self.args.move_to_proj else self.args.move_to_sect
-        moved_proj_tasks = self.data[ttm[1]]['tasks'].values()
         new_tasks = {}
 
-        # Nonexistenet task check
+        # Nonexistent task check
         if ttm[0] not in self.proj_tasks.keys():
             sys.exit(f'error: task #{ttm[0]} does not exist in project "{self.project}".')
 
@@ -700,6 +699,7 @@ class Todo(object):
                 sys.exit(f'error: section "{ttm[2]}" does not exist in project "{ttm[1]}".')
 
         # Task exists check
+        moved_proj_tasks = self.data[ttm[1]]['tasks'].values()
         if self.args.move_to_proj:
             if self.proj_tasks[ttm[0]] in moved_proj_tasks:
                 sys.exit(f'error: task #{ttm[0]} already exists in project "{ttm[1]}".')
