@@ -247,9 +247,10 @@ class Todo(object):
             #   and Delete don't need.
             if self.project or self.section:
                 self.nonexistent_check()
-            self.proj_sections, self.proj_tasks = self.find_project()
-            # self.proj_sections = self.data[self.project]['sections']
+            self.proj_sections = self.data[self.project]['sections']
             self.proj_tasks = self.data[self.project]['tasks']
+            self.check_list = self.data[self.project]['check']
+
 
     def __repr__(self):
         """Return attributes.
@@ -587,12 +588,7 @@ class Todo(object):
                     self.write()
 
     def task_delete(self):
-        """Delete a task from a project.
-
-        Had to use self.data[self.project]['tasks'] instead of self.proj_tasks
-          because otherwise, we would be deleting the wrong things when we
-          looped back since we're not updating proj_tasks.
-        """
+        """Delete a task from a project."""
         labels = list(sorted(self.args.task_delete))
 
         for i, label in enumerate(labels):
@@ -606,7 +602,7 @@ class Todo(object):
                 sys.exit(f'project "{self.project}" has no task #{label}.')
             else:
                 # delete task
-                self.data[self.project]['tasks'].pop(str(label))
+                self.proj_tasks.pop(str(label))
 
                 # update sections
                 all_section_tasks = []
@@ -621,23 +617,24 @@ class Todo(object):
                             section_tasks[i] = task_num - 1
 
                 # update check list
-                if label in self.data[self.project]['check']:
-                    self.data[self.project]['check'].remove(label)
+                if label in self.check_list:
+                    self.check_list.remove(label)
 
-                for i, task_num in enumerate(self.data[self.project]['check']):
+                for i, task_num in enumerate(self.check_list):
                     # update remaining check task label numbers
                     if task_num > label:
-                        self.data[self.project]['check'][i] = task_num - 1
+                        self.check_list[i] = task_num - 1
 
                 # update task list label numbers
                 new_tasks = {}
-                for old_index, task in self.data[self.project]['tasks'].items():
+                for old_index, task in self.proj_tasks.items():
                     if label <= int(old_index):
                         new_index = str(int(old_index) - 1)
                         new_tasks[new_index] = task
                     else:
                         new_tasks[old_index] = task
                 self.data[self.project]['tasks'] = new_tasks
+                self.proj_tasks = new_tasks
 
         self.write()
 
@@ -650,19 +647,18 @@ class Todo(object):
 
         """
         labels = self.args.check if check else self.args.uncheck
-        check_list = self.data[self.project]['check']
         task_id_list = list(self.proj_tasks.keys())
 
         for label in labels:
             if str(label) in task_id_list:
                 if check:
-                    if label not in check_list:
-                        check_list.append(label)
+                    if label not in self.check_list:
+                        self.check_list.append(label)
                     else:
                         sys.exit(f'task #{label} is already checked.')
                 else:
                     if label in check_list:
-                        check_list.remove(label)
+                        self.check_list.remove(label)
                     else:
                         sys.exit(f'task #{label} is not checked.')
             else:
@@ -725,10 +721,10 @@ class Todo(object):
         self.data[self.project]['tasks'] = new_tasks
 
         # Update check
-        if int(ttm[0]) in self.data[self.project]['check']:
-            self.data[self.project]['check'].remove(int(ttm[0]))
+        if int(ttm[0]) in self.check_list:
+            self.check_list.remove(int(ttm[0]))
         for i, task_num in enumerate(self.data[self.project]['check']):
-            self.data[self.project]['check'][i] = task_num if task_num < int(ttm[0]) else task_num - 1
+            self.check_list[i] = task_num if task_num < int(ttm[0]) else task_num - 1
 
         # Update sections
         for i, sect in enumerate(self.proj_sections):
@@ -759,8 +755,7 @@ class Todo(object):
         if label in section_names:
             sys.exit(f'section "{label}" already exists in project "{self.project}".')
 
-        sections = self.data[self.project]['sections']
-        sections.append({"name": label, "tasks": []})
+        self.proj_sections.append({"name": label, "tasks": []})
         self.write()
 
     def section_delete(self):
@@ -771,13 +766,12 @@ class Todo(object):
         if label not in section_names:
             sys.exit(f'section "{label}" does not exist in project "{self.project}".')
 
-        sections = self.data[self.project]['sections']
         check = self.data[self.project]['check']
 
         # delete section and section tasks
-        for i, sect in enumerate(sections):
+        for i, sect in enumerate(self.proj_sections):
             if sect.get('name') == label:
-                del sections[i]
+                del self.proj_sections[i]
                 for task in sect.get('tasks'):
                     self.proj_tasks.pop(str(task))
                 self.data[self.project]['check'] = list(set(check) - set(sect.get('tasks')))
@@ -797,11 +791,11 @@ class Todo(object):
         # update sections
         all_sections, new_tnames = self.get_updated_sections(
                                        self.data[self.project],
-                                       self.data[self.project]['sections'],
+                                       self.proj_sections,
                                        self.proj_tasks,
                                        self.data[self.project]['tasks'],
                                        set(self.data[self.project]['check']))
-        for section in self.data[self.project]['sections']:
+        for section in self.proj_sections:
             section['tasks'] = all_sections.get(section['name'])
         
         self.write()
