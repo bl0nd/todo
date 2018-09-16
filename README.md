@@ -66,8 +66,8 @@ $ todo PROJECT -u "Task 1" "Task 2" ...
 
 To move tasks:
 ```sh
-$ todo PROJECT -mp "Task To Move" NEW_PROJECT
-$ todo PROJECT -ms "Task To Move" NEW_PROJECT NEW_SECTION
+$ todo PROJECT -mp ID NEW_PROJECT
+$ todo PROJECT -ms ID NEW_PROJECT NEW_SECTION
 ```
 
 To add or delete sections:
