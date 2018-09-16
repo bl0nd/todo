@@ -815,19 +815,16 @@ class Menu(object):
         stdscr: (Window) Represents the entire screen.
 
     Attributes:
-        begin_x: (int)
-        begin_y: (int)
-        height: (int)
-        width: (int)
-        win: ()
-        colors: (dict)
-        excl: (String)
-        color: (String)
-        quote: (String)
-        hash: (String)
-        check: (String)
-        blank: (String)
-        section_tasks: (list)
+        begin_x: (int) Starting x coordinate of the curses window.
+        begin_y: (int) Starting y coordinate of the curses window.
+        height: (int)  Height of curses window.
+        width: (int)   Width of curses window.
+        win: (Window)  A Window object to draw on.    
+        colors: (dict) All current project colors (as keys) and their respective
+                         color pairs initialized in init_colors().
+        hash: (String)  Prefix for unchecked tasks.
+        check: (String) Prefix for checked tasks.
+        blank: (String) A blank line with the same length as the project box.
     """
     def __init__(self, stdscr):
         """Constructor. See class docstring."""
@@ -852,7 +849,7 @@ class Menu(object):
         self.blank  = '{}\n'.format(' ' * 58)
 
     def __repr__(self):
-        """Return attributs.
+        """Return attributes.
 
         We don't really need to return the prefixes do we?
         """
