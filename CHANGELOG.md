@@ -5,6 +5,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 0.1.3 (2018-09-14)
+### Features
+
+### Modifications
+ - Removed: find_project() ([]())
+ - Updated: Project sections in .todo are now of the format: {"SectionName": [ID1, ID2, ...]} ([]())
+ - Updated: Moving tasks is now done through the task ID ([377a9a2](https://github.com/bl0nd/todo/commit/377a9a2))
+ 
+### Fixed
+ - Moving nonexistent tasks is now handled ([]())
+
 ## 0.1.2 (2018-09-13)
 ### Features
  - Delete multiple tasks ([14a59b7](https://github.com/bl0nd/todo/commit/14a59b7))

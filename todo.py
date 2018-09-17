@@ -54,6 +54,7 @@ NOTES:
 import os
 import sys
 import json
+import logging
 import argparse
 import curses
 import time
@@ -282,37 +283,8 @@ class Todo(object):
             sys.exit(f'error: project "{self.project}" does not exist.')
         elif self.section:
             # Check section name (normal, archive mode)
-            proj_sections = [sect['name'] for sect in self.data[self.project]['sections']]
-            if self.section not in proj_sections:
+            if self.section not in self.data[self.project]['sections'].keys():
                 sys.exit(f'error: section "{self.section}" does not exist in project "{self.project}".')
-
-    def find_project(self):
-        """Return the sections and tasks of a project.
-
-        Helper:
-            todo.__init__()
-
-        Args:
-            None
-
-        Returns:
-            A tuple made of the specified project's sections in a list and tasks
-              in a dict.
-        """
-        sections = []
-        tasks = []
-
-        for i, project in enumerate(self.data.keys()):
-            if self.project == project:
-                sections.append(list(self.iter_data[i][1]['sections']))
-                tasks.append(list(self.iter_data[i][1]['tasks'].items()))
-
-        if tasks and not self.args.archive or (self.args.archive and self.args.section):
-            # If we're not archiving and there are completed tasks,
-            #   or if we are archiving, but a section is specified.
-            return (*sections, dict(*tasks))
-        else:
-            return (None, None)
 
     def project_name_check(self, project_name):
         """Check for invalid project names.
@@ -357,9 +329,7 @@ class Todo(object):
             checked: (set) The completed tasks to be archived.
         """
         if self.section:
-            for sect in self.proj_sections:
-                if self.section == sect['name']:
-                    sect_tasks = sect['tasks']
+            sect_tasks = self.proj_sections[self.section]
             checked = set(project['check']) & set(sect_tasks)
             if not checked:
                 sys.exit(f'No completed tasks in section "{self.section}" of project "{self.project}".')
@@ -397,6 +367,7 @@ class Todo(object):
         """Get an updated section task list after completed tasks are removed.
                 
         Helper:
+            section_delete()
             archive()
             achive_projects()
 
@@ -405,25 +376,25 @@ class Todo(object):
             sections:  (list) The current project's sections, which is either
                                 self.proj_sections if a section is specified,
                                 or project['sections'] otherwise.
-            old_tasks: (dict) Task list before checked tasks are deleted.
-            new_tasks: (dict) Task list after checked tasks are deleted.
+            old_tasks: (dict) Task list before task indices are updated.
+            new_tasks: (dict) Task list after task indices are updated.
             checked:   (set)  Updated check list.
         
         Returns:
             all_sections: (dict) Each section (name as key) and its unchecked
                                    tasks (as values) after archiving.
             new_tnames:   (list) All task names after archiving. (for updating
-                                   remaining check list values)
+                                   remaining check list values in Archive???)
         """
         new_tnames = list(new_tasks.values())
         all_sections = {}
 
-        for sect in sections:
-            unchecked_sect_tasks = list(set(sect['tasks']) - checked)
+        for sect_name, sect_tasks in sections.items():
+            unchecked_sect_tasks = list(set(sect_tasks) - checked)
             for i, task_num in enumerate(unchecked_sect_tasks):
-                old_tname = old_tasks.get(str(task_num))
+                old_tname = old_tasks[str(task_num)]
                 unchecked_sect_tasks[i] = new_tnames.index(old_tname) + 1
-            all_sections[sect['name']] = sorted(unchecked_sect_tasks)
+            all_sections[sect_name] = sorted(unchecked_sect_tasks)
 
         return all_sections, new_tnames
 
@@ -463,18 +434,18 @@ class Todo(object):
                     self.project,
                     self.section)
         else:
-            wrapper(self.menu.draw_all, self.data, self.iter_data)
+            wrapper(self.menu.draw_all, self.data)
     
     def create(self):
         """Create a new project."""
         self.project_name_check(self.project)
-        self.data[self.project] = {"sections": [], "tasks": {}, "check": []}
+        self.data[self.project] = {"sections": {}, "tasks": {}, "check": []}
         self.write()
 
     def delete(self):
         """Delete a project."""
         try:
-            self.data.pop(self.project)
+            del self.data[self.project]
         except KeyError as e:
             sys.exit(f'error: project "{self.project}" does not exist.')
         self.write()
@@ -504,8 +475,7 @@ class Todo(object):
             # Update sections
             all_sections, new_tnames = self.get_updated_sections(project, 
                 self.proj_sections, old_tasks, new_tasks, checked)
-            for sect in project['sections']:
-                sect['tasks'] = all_sections.get(sect['name'])
+            project['sections'] = all_sections
 
             # Update check list values
             for i, task in enumerate(project['check']):
@@ -539,8 +509,7 @@ class Todo(object):
         # Update sections
         all_sections, new_tnames = self.get_updated_sections(project,
             project['sections'], old_tasks, new_tasks, checked)
-        for sect in project['sections']:
-            sect['tasks'] = all_sections.get(sect['name'])
+        project['sections'] = all_sections
 
     def rename(self):
         """Rename a project or section."""
@@ -573,68 +542,71 @@ class Todo(object):
             section: (String) Name of section to add task to.
         """
         proj_tasks = self.data[project]['tasks']
-        if label in proj_tasks.values():
+
+        # existing task check
+        if label in self.data[project]['tasks'].values():
             sys.exit(f'task "{label}" already exists in project "{project}".')
+
+        # update section
+        # self.proj_section isn't used here since move_task also uses this and
+        # we may need to add to section in a different project
+        if section:
+            self.data[project]['sections'][section].append(len(proj_tasks) + 1)
 
         # add task
         proj_tasks[len(proj_tasks) + 1] = label
-        self.write()
 
-        # update sections
-        if section:
-            for sect in self.data[project]['sections']:
-                if section == sect.get('name'):
-                    sect['tasks'].append(len(proj_tasks))
-                    self.write()
+        self.write()
 
     def task_delete(self):
         """Delete a task from a project."""
         labels = list(sorted(self.args.task_delete))
-
-        for i, label in enumerate(labels):
-            if i != 0:
-                labels[i] = label - len(labels[:i])
-
+        
+        # checks
         for label in labels:
             if not label:
                 sys.exit('error: 0 is an invalid task number.')
             elif label > len(self.proj_tasks):
                 sys.exit(f'project "{self.project}" has no task #{label}.')
-            else:
-                # delete task
-                self.proj_tasks.pop(str(label))
+        
+        # reduce non-first task indices by 1 to ensure proper
+        # deletion after deletion of the previous task
+        for i, label in enumerate(labels):
+            if i != 0:
+                labels[i] = label - len(labels[:i])
 
-                # update sections
-                all_section_tasks = []
-                for section in self.proj_sections:
-                    all_section_tasks.append(section.get('tasks'))
+        for label in labels:
+            # delete task
+            self.proj_tasks.pop(str(label))
 
-                for section_tasks in all_section_tasks:
-                    if label in section_tasks:
-                        section_tasks.remove(label)
-                    for i, task_num in enumerate(section_tasks):
-                        if task_num > label:
-                            section_tasks[i] = task_num - 1
+            # update sections
+            all_section_tasks = [tasks for tasks in self.proj_sections.values()]
 
-                # update check list
-                if label in self.check_list:
-                    self.check_list.remove(label)
-
-                for i, task_num in enumerate(self.check_list):
-                    # update remaining check task label numbers
+            for sect_tasks in all_section_tasks:
+                if label in sect_tasks:
+                    sect_tasks.remove(label)
+                for i, task_num in enumerate(sect_tasks):
                     if task_num > label:
-                        self.check_list[i] = task_num - 1
+                        sect_tasks[i] = task_num - 1
 
-                # update task list label numbers
-                new_tasks = {}
-                for old_index, task in self.proj_tasks.items():
-                    if label <= int(old_index):
-                        new_index = str(int(old_index) - 1)
-                        new_tasks[new_index] = task
-                    else:
-                        new_tasks[old_index] = task
-                self.data[self.project]['tasks'] = new_tasks
-                self.proj_tasks = new_tasks
+            # update check list
+            if label in self.check_list:
+                self.check_list.remove(label)
+
+            for i, task_num in enumerate(self.check_list):
+                if task_num > label:
+                    self.check_list[i] = task_num - 1
+
+            # update task list label numbers
+            new_tasks = {}
+            for old_index, task in self.proj_tasks.items():
+                if label <= int(old_index):
+                    new_index = str(int(old_index) - 1)
+                    new_tasks[new_index] = task
+                else:
+                    new_tasks[old_index] = task
+            self.data[self.project]['tasks'] = new_tasks
+            self.proj_tasks = new_tasks
 
         self.write()
 
@@ -672,109 +644,104 @@ class Todo(object):
         'ttm' is short for "task to move."
 
         If no section is specified (-mp), 'ttm' is a list of the format:
-            [label, project]
+            [id, project]
 
         If a section is specified (-ms), 'ttm' is a list of the format:
-            [label, project, section]
+            [id, project, section]
         """
         ttm = self.args.move_to_proj if self.args.move_to_proj else self.args.move_to_sect
+        task_id = ttm[0]
+        new_prj = ttm[1]
+        new_sect = ttm[2] if self.args.move_to_sect else None
         new_tasks = {}
 
-        # Nonexistent task check
-        if ttm[0] not in self.proj_tasks.keys():
-            sys.exit(f'error: task #{ttm[0]} does not exist in project "{self.project}".')
+        # Nonexistent checks
+        if task_id not in self.proj_tasks.keys():
+            sys.exit(f'error: task #{task_id} does not exist in project "{self.project}".')
 
-        # Project check
-        if ttm[1] not in [project for project in self.data.keys()]:
-            sys.exit(f'error: project "{ttm[1]}" does not exist.')
+        if new_prj not in [project for project in self.data.keys()]:
+            sys.exit(f'error: project "{new_prj}" does not exist.')
 
-        # Section check
-        existing_sects = [sect['name'] for sect in self.data[ttm[1]]['sections']]
         if self.args.move_to_sect:
-            if ttm[2] not in existing_sects:
-                sys.exit(f'error: section "{ttm[2]}" does not exist in project "{ttm[1]}".')
+            if new_sect not in list(self.data[new_prj]['sections'].keys()):
+                sys.exit(f'error: section "{new_sect}" does not exist in project "{new_prj}".')
 
         # Task exists check
-        moved_proj_tasks = self.data[ttm[1]]['tasks'].values()
-        if self.args.move_to_proj:
-            if self.proj_tasks[ttm[0]] in moved_proj_tasks:
-                sys.exit(f'error: task #{ttm[0]} already exists in project "{ttm[1]}".')
-        else:
-            for sect in self.data[ttm[1]]['sections']:
-                # moving to a section in the same project or
-                # moving to a different section in a different project
-                if (
-                        (
-                            sect['name'] == ttm[2] and
-                            ttm[1] == self.project and
-                            self.proj_tasks[ttm[0]] in moved_proj_tasks
-                        )
-                    or self.proj_tasks[ttm[0]] in moved_proj_tasks
-                   ):
-                    sys.exit(f'error: task #{ttm[0]} already exists project "{ttm[1]}".')
-                    
+        moved_proj_tasks = self.data[new_prj]['tasks'].values()
+        # if moving to a project OR
+        # if moving to a section in the same project OR
+        # if moving to a different section in a different project
+        if (
+            (
+                self.args.move_to_proj and
+                self.proj_tasks[task_id] in moved_proj_tasks
+            )
+            or (
+                self.args.move_to_sect and 
+                new_sect in self.data[new_prj]['sections'].keys() and
+                new_prj == self.project and
+                self.proj_tasks[task_id] in moved_proj_tasks
+               ) 
+            or (
+                self.args.move_to_sect and
+                self.proj_tasks[task_id] in moved_proj_tasks)
+           ):
+            sys.exit(f'error: task #{task_id} already exists project "{new_prj}".')
+
         # Remove task
         for pos, task in self.proj_tasks.items():
-            if task != self.proj_tasks[ttm[0]]:
-                new_pos = int(pos) if int(pos) < int(ttm[0]) else int(pos) - 1
+            if task != self.proj_tasks[task_id]:
+                new_pos = int(pos) if int(pos) < int(task_id) else int(pos) - 1
                 new_tasks[new_pos] = task
         self.data[self.project]['tasks'] = new_tasks
 
         # Update check
-        if int(ttm[0]) in self.check_list:
-            self.check_list.remove(int(ttm[0]))
+        if int(task_id) in self.check_list:
+            self.check_list.remove(int(task_id))
         for i, task_num in enumerate(self.data[self.project]['check']):
-            self.check_list[i] = task_num if task_num < int(ttm[0]) else task_num - 1
+            self.check_list[i] = task_num if task_num < int(task_id) else task_num - 1
 
         # Update sections
-        for i, sect in enumerate(self.proj_sections):
+        for sect_name, sect_tasks in self.proj_sections.items():
             new_sects = []
-            for task_num in sect['tasks']:
-                if int(ttm[0]) > task_num:
+            for task_num in sect_tasks:
+                if int(task_id) > task_num:
                     new_sects.append(task_num)
-                elif int(ttm[0]) < task_num:
+                elif int(task_id) < task_num:
                     new_sects.append(task_num - 1)
-            self.proj_sections[i]['tasks'] = new_sects
-        
+            self.proj_sections[sect_name] = new_sects
+
         # Add (writes to file there)
         if self.args.move_to_proj:
-            self.add(self.proj_tasks.get(ttm[0]), ttm[1])
+            self.add(self.proj_tasks.get(task_id), new_prj)
         else:
-            self.add(self.proj_tasks.get(ttm[0]), ttm[1], ttm[2])
+            self.add(self.proj_tasks.get(task_id), new_prj, new_sect)
 
     # >>> Section functions
 
     def section_add(self):
-        """Add a section.
-
-        In this function, 'self.proj_tasks' basically means old tasks, while
-          'self.data[self.project]['tasks']' means the current, new tasks.'
-        """
+        """Add a section."""
         label = self.args.section_add
-        section_names = [sect.get('name') for sect in self.proj_sections]
-        if label in section_names:
+        if label in self.proj_sections.keys():
             sys.exit(f'section "{label}" already exists in project "{self.project}".')
 
-        self.proj_sections.append({"name": label, "tasks": []})
+        self.proj_sections[label] = []
         self.write()
 
     def section_delete(self):
         """Delete a section."""
         label = self.args.section_delete
-
-        section_names = [sect.get('name') for sect in self.proj_sections]
-        if label not in section_names:
-            sys.exit(f'section "{label}" does not exist in project "{self.project}".')
-
         check = self.data[self.project]['check']
 
+        if label not in self.proj_sections.keys():
+            sys.exit(f'section "{label}" does not exist in project "{self.project}".')
+
         # delete section and section tasks
-        for i, sect in enumerate(self.proj_sections):
-            if sect.get('name') == label:
-                del self.proj_sections[i]
-                for task in sect.get('tasks'):
-                    self.proj_tasks.pop(str(task))
-                self.data[self.project]['check'] = list(set(check) - set(sect.get('tasks')))
+        sect_tasks = self.proj_sections.get(label)
+        del self.proj_sections[label]
+        for task in sect_tasks:
+            self.proj_tasks.pop(str(task))
+        self.data[self.project]['check'] = list(set(check) - set(sect_tasks))
 
         # update task indices
         new_tasks = {}
@@ -795,9 +762,9 @@ class Todo(object):
                                        self.proj_tasks,
                                        self.data[self.project]['tasks'],
                                        set(self.data[self.project]['check']))
-        for section in self.proj_sections:
-            section['tasks'] = all_sections.get(section['name'])
-        
+        for sect_name, sect_tasks in self.proj_sections.items():
+            self.proj_sections[sect_name] = all_sections.get(sect_name)
+
         self.write()
 
 
@@ -992,7 +959,8 @@ class Menu(object):
                 self.win.addstr(f'{tindex}', curses.color_pair(clrs[8]))
                 self.win.addstr(f'{prefix}{self.utask}{tname}{suffix}', curses.color_pair(clrs[4]))
 
-    def draw_sections(self, stdscr, check_list, clrs, proj_tasks, sect):
+    def draw_sections(self, stdscr, check_list, clrs, proj_tasks, sect_name,
+                      sect_tasks):
         """Draw sections.
 
         Args:
@@ -1004,16 +972,17 @@ class Menu(object):
                                    project.
             sect:       (dict)   Name and tasks for the current section.
         """
-        # Section
-        end_sec = '{}\n'.format(' ' * (56 - len(sect.get('name')) - 9))
+        end_sec = '{}\n'.format(' ' * (56 - len(sect_name) - 9))
+
+        # Section header
         self.win.addstr(f'{" " * 6} {self.hash}', curses.color_pair(clrs[5]))
-        self.win.addstr(f'{sect.get("name")}{end_sec}', curses.color_pair(clrs[6]))
+        self.win.addstr(f'{sect_name}{end_sec}', curses.color_pair(clrs[6]))
 
         # Section tasks
-        task_nums = sect.get('tasks')
-        for task_num in task_nums:
+        for task_num in sect_tasks:
             tname = proj_tasks.get(str(task_num))
-            wrapper(self.draw_tasks, task_num, tname, check_list, clrs, section=True)
+            wrapper(self.draw_tasks, task_num, tname, check_list, clrs,
+                    section=True)
         self.win.addstr(self.blank, curses.color_pair(clrs[3]))
 
     def draw_prjsect(self, stdscr, projects, proj_sections, proj_tasks, project, section):
@@ -1024,14 +993,12 @@ class Menu(object):
 
         Args:
             stdscr:        (Window) Represents the entire screen.
-            proj_sections: (list)   All sections (in dicts which contains the
-                                      section name and its tasks.)
+            proj_sections: (dict)   All section names and their tasks.
             proj_tasks:    (dict)   All tasks and their index for the specified
                                       project.
             project:       (String) Name of the specified project.
             section:       (String) Name of the specified section.
         """
-        section_tasks = {str(num) for sect in proj_sections for num in sect.get('tasks')}
         check_list = projects.get(project).get('check')
         end_banner = '"{}\n'.format(' ' * (56 - len(project) - 9))
 
@@ -1050,50 +1017,51 @@ class Menu(object):
         # Body
         if section:
             # sections and section tasks
-            for sect in proj_sections:
-                if section == sect.get('name'):
-                    wrapper(self.draw_sections, check_list, clrs, proj_tasks, sect)
+            wrapper(self.draw_sections, check_list, clrs, proj_tasks, section,
+                    proj_sections[section])
 
             # end lines
             self.win.addstr(self.blank * 2, curses.color_pair(clrs[3]))
         elif project:
             # sections and section tasks
-            for sect in proj_sections:
-                wrapper(self.draw_sections, check_list, clrs, proj_tasks, sect)
+            for sect_name, sect_tasks in proj_sections.items():
+                wrapper(self.draw_sections, check_list, clrs, proj_tasks,
+                        sect_name, sect_tasks)
             if proj_sections:
                 self.win.addstr(self.blank, curses.color_pair(clrs[3]))
 
             # tasks
+            #   we str(task) cause proj_tasks' keys are Strings, and it'd be
+            #   very annoying if we had to convert all_sect_tasks elements later
+            all_sect_tasks = [str(task) for tasks in proj_sections.values() for task in tasks]
+
             for task_num, tname in proj_tasks.items():
-                if task_num not in section_tasks:
-                    wrapper(self.draw_tasks, int(task_num), tname, check_list, clrs, section=False)
+                if task_num not in all_sect_tasks:
+                    wrapper(self.draw_tasks, int(task_num), tname, check_list,
+                            clrs, section=False)
 
             # end lines
             #   If there are regular tasks, we need to add 3 blank lines,
             #   otherwise just add 1 since draw_sections() adds 2 already (one
             #   between sections and one right before tasks).
-            body_end = 3 if set(proj_tasks.keys()) - section_tasks else 1
+            body_end = 3 if set(proj_tasks.keys()) - set(all_sect_tasks) else 1
             self.win.addstr(self.blank * body_end, curses.color_pair(clrs[3]))
 
         # Block
         self.win.getch()
 
-    def draw_all(self, stdscr, projects, iter_projects):
+    def draw_all(self, stdscr, projects):
         """Draw all projects, sections, and tasks.
 
         Args:
             stdscr:        (Window) Represents the entire screen.
             projects:      (dict)   All projects (as keys) and their sections and
                                       tasks (as values).
-            iter_projects: (list)   All projects (as list[i][0]) and their
-                                      sections and tasks (list[i][1]).
         """
-        for i, proj in enumerate(projects):
-            proj_sections = iter_projects[i][1]['sections']
-            proj_tasks = iter_projects[i][1]['tasks']
-            proj_name = iter_projects[i][0]
-            section_tasks = [str(num) for sect in proj_sections for num in sect.get('tasks')]
-            check_list = projects.get(proj).get('check')
+        for i, proj_name in enumerate(projects):
+            proj_sections = projects[proj_name]['sections']
+            proj_tasks = projects[proj_name]['tasks']
+            check_list = projects[proj_name]['check']
             proj_color = list(self.colors.keys())[i % len(self.colors)]
             clrs = self.colors.get(proj_color)
 
@@ -1106,18 +1074,21 @@ class Menu(object):
 
             # Body
             #   section
-            for sect in proj_sections:
-                wrapper(self.draw_sections, check_list, clrs, proj_tasks, sect)
+            for sect_name, sect_tasks in proj_sections.items():
+                wrapper(self.draw_sections, check_list, clrs, proj_tasks,
+                        sect_name, sect_tasks)
 
             #   tasks
+            all_sect_tasks = [str(task) for tasks in proj_sections.values() for task in tasks]
             if proj_sections:
                 self.win.addstr(self.blank, curses.color_pair(clrs[3]))
             for task_num, tname in proj_tasks.items():
-                if task_num not in section_tasks:
-                    wrapper(self.draw_tasks, int(task_num), tname, check_list, clrs, section=False)
+                if task_num not in all_sect_tasks:
+                    wrapper(self.draw_tasks, int(task_num), tname, check_list,
+                    clrs, section=False)
 
             #   end lines
-            body_end = 3 if set(proj_tasks.keys()) - set(section_tasks) else 1
+            body_end = 3 if set(proj_tasks.keys()) - set(all_sect_tasks) else 1
             self.win.addstr(self.blank * body_end, curses.color_pair(clrs[3]))
 
             # Project spacing
@@ -1135,6 +1106,7 @@ class Menu(object):
 
 def main(todo_file):
     """Main program, used when ran as a script."""
+    logging.basicConfig(level=logging.DEBUG)
     menu = wrapper(Menu)
     parser = create_parser(menu, todo_file)
     todo = Todo(menu, parser, todo_file)
@@ -1164,10 +1136,10 @@ def main(todo_file):
         elif parser.rename:
             todo.rename()
         elif parser.project or (parser.project and parser.section):
-            try:
-                todo.show()
-            except:
-                sys.exit('error: terminal window is not large enough.')
+            # try:
+            todo.show()
+            # except:
+            #     sys.exit('error: terminal window is not large enough.')
 
 
 if __name__ == '__main__':
