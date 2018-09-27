@@ -161,6 +161,7 @@ def create_parser(menu, todo_file):
     sp_normal.set_defaults(project=sys.argv[1], create=False, delete=False, archive=False)
     sp_normal.add_argument('-a', '--add')
     sp_normal.add_argument('-r', '--rename')
+    sp_normal.add_argument('-i', '--insert', nargs=2)
 
     section = sp_normal.add_mutually_exclusive_group()
     section.add_argument('section', nargs='?')
@@ -206,6 +207,8 @@ def create_parser(menu, todo_file):
                    Todo
 [+++++++++++++++++++++++++++++++++++++++++++++]
 """
+
+
 class Todo(object):
     """Class for managing TODO list states.
 
@@ -251,7 +254,6 @@ class Todo(object):
             self.proj_sections = self.data[self.project]['sections']
             self.proj_tasks = self.data[self.project]['tasks']
             self.check_list = self.data[self.project]['check']
-
 
     def __repr__(self):
         """Return attributes.
@@ -369,7 +371,7 @@ class Todo(object):
         Helper:
             section_delete()
             archive()
-            achive_projects()
+            archive_projects()
 
         Args:
             project:   (dict) All tasks and their position as keys.
@@ -473,8 +475,7 @@ class Todo(object):
             project['tasks'] = new_tasks
 
             # Update sections
-            all_sections, new_tnames = self.get_updated_sections(project, 
-                self.proj_sections, old_tasks, new_tasks, checked)
+            all_sections, new_tnames = self.get_updated_sections(project, self.proj_sections, old_tasks, new_tasks, checked)
             project['sections'] = all_sections
 
             # Update check list values
@@ -507,8 +508,7 @@ class Todo(object):
         project['tasks'] = new_tasks
 
         # Update sections
-        all_sections, new_tnames = self.get_updated_sections(project,
-            project['sections'], old_tasks, new_tasks, checked)
+        all_sections, new_tnames = self.get_updated_sections(project, project['sections'], old_tasks, new_tasks, checked)
         project['sections'] = all_sections
 
     def rename(self):
@@ -555,6 +555,57 @@ class Todo(object):
 
         # add task
         proj_tasks[len(proj_tasks) + 1] = label
+
+        self.write()
+
+    def insert(self):
+        """Insert a task at a specified position."""
+        pos, label = self.args.insert
+
+        # insert format check
+        if not pos.isdigit():
+            sys.exit(f'error: insert position must be a digit')
+
+        # existing task check
+        if label in self.proj_tasks.values():
+            sys.exit(f'error: task "{label}" already exists in project "{self.project}".')
+
+        # valid position check
+        if int(pos) > int(list(self.proj_tasks.keys())[-1]):
+            sys.exit(f'error: there are only {list(self.proj_tasks.keys())[-1]} task positions.')
+
+        # update section positions
+        all_section_tasks = [tasks for tasks in self.proj_sections.values()]
+
+        for sect_tasks in all_section_tasks:
+            for i, task_num in enumerate(sect_tasks):
+                if task_num >= int(pos):
+                    sect_tasks[i] = task_num + 1
+
+        # update check list
+        for i, task_num in enumerate(self.check_list):
+            if task_num >= int(pos):
+                self.check_list[i] = task_num + 1
+
+        # update task list positions and add task
+        new_tasks = {}
+        for old_index, task in self.proj_tasks.items():
+            if int(old_index) == int(pos):
+                new_tasks[pos] = label
+                new_index = str(int(old_index) + 1)
+                new_tasks[new_index] = task
+            elif int(old_index) > int(pos):
+                new_index = str(int(old_index) + 1)
+                new_tasks[new_index] = task
+            else:
+                new_tasks[old_index] = task
+        self.data[self.project]['tasks'] = new_tasks
+
+        if self.section:
+            for i, sect_num in enumerate(self.proj_sections[self.section]):
+                if sect_num > int(pos):
+                    self.proj_sections[self.section].insert(i, int(pos))
+                    break
 
         self.write()
 
@@ -779,6 +830,7 @@ class Todo(object):
                  Curses
 [+++++++++++++++++++++++++++++++++++++++++++++]
 """
+
 
 class Menu(object):
     """Manager for curses drawings.
@@ -1109,6 +1161,7 @@ class Menu(object):
 [+++++++++++++++++++++++++++++++++++++++++++++]
 """
 
+
 def main(todo_file):
     """Main program, used when ran as a script."""
     logging.basicConfig(level=logging.DEBUG)
@@ -1142,6 +1195,8 @@ def main(todo_file):
             todo.rename()
         elif parser.unsect:
             todo.unsection()
+        elif parser.insert:
+            todo.insert()
         elif parser.project or (parser.project and parser.section):
             # try:
             todo.show()
