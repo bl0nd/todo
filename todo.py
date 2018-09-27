@@ -663,30 +663,27 @@ class Todo(object):
             sys.exit(f'error: project "{new_prj}" does not exist.')
 
         if self.args.move_to_sect:
-            if new_sect not in list(self.data[new_prj]['sections'].keys()):
+            if new_sect not in self.data[new_prj]['sections'].keys():
                 sys.exit(f'error: section "{new_sect}" does not exist in project "{new_prj}".')
 
-        # Task exists check
+        # Task exists checks
         moved_proj_tasks = self.data[new_prj]['tasks'].values()
-        # if moving to a project OR
-        # if moving to a section in the same project OR
-        # if moving to a different section in a different project
-        if (
-            (
-                self.args.move_to_proj and
-                self.proj_tasks[task_id] in moved_proj_tasks
-            )
-            or (
-                self.args.move_to_sect and 
-                new_sect in self.data[new_prj]['sections'].keys() and
-                new_prj == self.project and
-                self.proj_tasks[task_id] in moved_proj_tasks
-               ) 
-            or (
-                self.args.move_to_sect and
-                self.proj_tasks[task_id] in moved_proj_tasks)
-           ):
-            sys.exit(f'error: task #{task_id} already exists project "{new_prj}".')
+        if self.args.move_to_sect:
+            moved_sect_tasks = self.data[new_prj]['sections'][new_sect]
+
+        #   if moving to a project
+        if self.args.move_to_proj and self.proj_tasks[task_id] in moved_proj_tasks:
+            sys.exit(f'error: task #{task_id} already exists in project "{new_prj}".')
+
+        #   if moving to a section in the same project OR
+        #   if moving to a different section in a different project
+        if self.args.move_to_sect:
+            if (
+                (new_prj == self.project and int(task_id) in moved_sect_tasks)
+                or
+                (new_prj != self.project and self.proj_tasks[task_id] in moved_proj_tasks)
+               ):
+                sys.exit(f'error: task #{task_id} already exists in section "{new_sect}" of project "{new_prj}".')
 
         # Remove task
         for pos, task in self.proj_tasks.items():
