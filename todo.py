@@ -172,6 +172,7 @@ def create_parser(menu, todo_file):
     section.add_argument('-ms', '--move_to_sect', nargs=3)
     section.add_argument('-sa', '--sectionadd', dest='section_add')
     section.add_argument('-sd', '--sectiondelete', dest='section_delete')
+    section.add_argument('-us', '--unsect', type=int, nargs=argparse.REMAINDER)
     # section.add_argument('-sc', '--sectioncheck', dest='section_check')
 
     # Create Mode
@@ -764,6 +765,14 @@ class Todo(object):
 
         self.write()
 
+    def unsection(self):
+        "Move tasks out of sections."
+        for task_to_unsect in self.args.unsect:
+            for sect_name, sect_tasks in self.proj_sections.items():
+                if task_to_unsect in sect_tasks:
+                    self.proj_sections[sect_name].remove(task_to_unsect)
+        
+        self.write()
 
 
 """
@@ -1132,6 +1141,8 @@ def main(todo_file):
             todo.section_delete()
         elif parser.rename:
             todo.rename()
+        elif parser.unsect:
+            todo.unsection()
         elif parser.project or (parser.project and parser.section):
             # try:
             todo.show()
