@@ -109,22 +109,21 @@ Modes:
 
 Normal mode options:
   general
-    -r LABEL                        Rename a project or section.
+    -r LABEL                     Rename a project or section.
 
   tasks
-    -a LABEL                        Add a task.
-    -d ID [ID ...]                  Delete tasks.
-    -c LABEL [LABEL ...]            Mark tasks as complete.
-    -u LABEL [LABEL ...]            Mark tasks as incomplete.
-    -mp LABEL PROJECT               Move a task to a different project.
-    -ms LABEL PROJECT SECTION       Move a task to a different section.
+    -a  LABEL                    Add a task.
+    -d  ID [ID ...]              Delete tasks.
+    -c  ID [ID ...]              Mark tasks as complete.
+    -u  ID [ID ...]              Mark tasks as incomplete.
+    -mp ID PROJECT               Move a task to a different project.
+    -ms ID PROJECT SECTION       Move a task to a different section.
 
   sections
-    -sa LABEL  Add a section.
-    -sd LABEL  Delete a section.
+    -sa LABEL                    Add a section.
+    -sd LABEL                    Delete a section.
+    -us ID [ID ...]              Move tasks out of sections.
 ''')
-#     -sc LABEL  Mark a section as complete.
-#     -su LABEL  Mark a section as incomplete.
 
 def create_parser(menu, todo_file):
     """Create a command-line parser.
