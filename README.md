@@ -55,7 +55,7 @@ $ todo A Blonded
 To add or delete tasks:
 ```sh
 $ todo PROJECT [SECTION] -a "Task 1"
-$ todo PROJECT -d ID₁ ID₂ ...
+$ todo PROJECT -d ID₁ [ID₂ ...]
 ```
 
 To check and uncheck tasks:
@@ -79,6 +79,11 @@ $ todo PROJECT -sd "Section 1"
 To rename projects and sections:
 ```sh
 $ todo PROJECT [SECTION] -r "New Name"
+```
+
+To move tasks out of their sections (thereby becoming normal tasks):
+```sh
+$ todo PROJECT ID₁ [ID₂ ...]
 ```
 
 ### Creation
