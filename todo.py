@@ -341,7 +341,8 @@ class Todo(object):
                 sys.exit(f'No completed tasks in project "{self.project}".')
         return checked
 
-    def no_checked_tasks(self, project, checked):
+    @staticmethod
+    def no_checked_tasks(project, checked):
         """Get an updated task list with no checked tasks.
         
         Helper:
@@ -365,7 +366,8 @@ class Todo(object):
                 new_tasks[str(len(new_tasks) + 1)] = task
         return old_tasks, new_tasks
 
-    def get_updated_sections(self, project, sections, old_tasks, new_tasks, checked):
+    @staticmethod
+    def get_updated_sections(sections, old_tasks, new_tasks, checked):
         """Get an updated section task list after completed tasks are removed.
                 
         Helper:
@@ -374,7 +376,6 @@ class Todo(object):
             archive_projects()
 
         Args:
-            project:   (dict) All tasks and their position as keys.
             sections:  (list) The current project's sections, which is either
                                 self.proj_sections if a section is specified,
                                 or project['sections'] otherwise.
@@ -475,7 +476,7 @@ class Todo(object):
             project['tasks'] = new_tasks
 
             # Update sections
-            all_sections, new_tnames = self.get_updated_sections(project, self.proj_sections, old_tasks, new_tasks, checked)
+            all_sections, new_tnames = self.get_updated_sections(self.proj_sections, old_tasks, new_tasks, checked)
             project['sections'] = all_sections
 
             # Update check list values
@@ -508,7 +509,7 @@ class Todo(object):
         project['tasks'] = new_tasks
 
         # Update sections
-        all_sections, new_tnames = self.get_updated_sections(project, project['sections'], old_tasks, new_tasks, checked)
+        all_sections, new_tnames = self.get_updated_sections(project['sections'], old_tasks, new_tasks, checked)
         project['sections'] = all_sections
 
     def rename(self):
@@ -805,7 +806,6 @@ class Todo(object):
 
         # update sections
         all_sections, new_tnames = self.get_updated_sections(
-                                       self.data[self.project],
                                        self.proj_sections,
                                        self.proj_tasks,
                                        self.data[self.project]['tasks'],
