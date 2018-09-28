@@ -249,11 +249,11 @@ class Todo(object):
         elif not args.create and not args.delete:
             # For getting a project's sections and tasks, which modes Create
             #   and Delete don't need.
-            if self.project or self.section:
+            if self.project:
                 self.nonexistent_check()
-            self.proj_sections = self.data[self.project]['sections']
-            self.proj_tasks = self.data[self.project]['tasks']
-            self.check_list = self.data[self.project]['check']
+                self.proj_sections = self.data[self.project]['sections']
+                self.proj_tasks = self.data[self.project]['tasks']
+                self.check_list = self.data[self.project]['check']
 
     def __repr__(self):
         """Return attributes.
@@ -529,6 +529,7 @@ class Todo(object):
                     new_data[self.args.rename] = prj
                 else:
                     new_data[name] = prj
+
         self.data = new_data
         self.write()
 
