@@ -5,16 +5,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## 0.1.3 (2018-09-14)
+## 0.1.3 (2018-09-26)
 ### Features
+ - Tasks can be moved out of sections ([f9c71cd](https://github.com/bl0nd/todo/commit/f9c71cd))
 
 ### Modifications
- - Removed: find_project() ([]())
- - Updated: Project sections in .todo are now of the format: {"SectionName": [ID1, ID2, ...]} ([]())
+ - Removed: find_project() ([e57f55b](https://github.com/bl0nd/todo/commit/e57f55b))
+ - Updated: Project sections in .todo are now of the format: {"SectionName": [ID1, ID2, ...]} ([e57f55b](https://github.com/bl0nd/todo/commit/e57f55b))
  - Updated: Moving tasks is now done through the task ID ([377a9a2](https://github.com/bl0nd/todo/commit/377a9a2))
  
 ### Fixed
- - Moving nonexistent tasks is now handled ([]())
+ - Moving nonexistent tasks is now handled ([2cf54aa](https://github.com/bl0nd/todo/commit/2cf54aa))
+ - Moving tasks between sections within the same project no longer throws an "task exists" error ([b766299](https://github.com/bl0nd/todo/commit/b766299))
+
 
 ## 0.1.2 (2018-09-13)
 ### Features
