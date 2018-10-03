@@ -1,8 +1,7 @@
-# Todo
-Todo is a simple and intuitive manager for TODO lists, allowing you to organize your life, or maybe just programming projects, from the terminal in a way that feels natural and looks stylish!
-
+<h1 align="center">Todo</h1> <br>
 <p align="center">
   <img src="images/logo.png" | width=900>
+  <code>todo</code> is a simple and intuitive manager for programming TODO lists
 </p>
 
 
