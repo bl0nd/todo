@@ -26,7 +26,7 @@ Note: It is planned to have installation done through ```pip``` soon, so this al
 ## Usage
 Todo has 4 main modes:
 
-### Normal
+### Normal Mode
 View or modify existing projects and sections.
 
 ```sh
@@ -85,7 +85,7 @@ To move tasks out of their sections (thereby becoming normal tasks):
 $ todo PROJECT ID₁ [ID₂ ...]
 ```
 
-### Creation
+### Creation Mode
 Create projects.
 ```sh
 $ todo create "Project 1"
@@ -95,14 +95,14 @@ $ todo create "Project 1"
 - Currently, only 4 colors are in rotation for projects (red, green, blue, violet), though that may change at a future date.
 
 
-### Deletion
+### Deletion Mode
 Delete projects.
 ```sh
 $ todo delete "Project 1"
 ```
 
 
-### Archive
+### Archive Mode
 Remove completed tasks.
 ```sh
 $ todo archive [PROJECT [SECTION]] 
