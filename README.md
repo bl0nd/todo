@@ -57,7 +57,7 @@ $ todo PROJECT [SECTION] -a "Task 1"
 $ todo PROJECT -d ID₁ [ID₂ ...]
 ```
 
-To check and uncheck tasks:
+To check or uncheck tasks:
 ```sh
 $ todo PROJECT -c "Task 1" "Task 2" ...
 $ todo PROJECT -u "Task 1" "Task 2" ...
@@ -80,10 +80,6 @@ To rename projects and sections:
 $ todo PROJECT [SECTION] -r "New Name"
 ```
 
-To move tasks out of their sections (thereby becoming normal tasks):
-```sh
-$ todo PROJECT ID₁ [ID₂ ...]
-```
 
 ### Creation Mode
 Create projects.
